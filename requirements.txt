@@ -1,0 +1,25 @@
+aiobotocore==1.1.2
+aiohttp==3.7.2
+aioitertools==0.7.0
+alembic==1.4.3
+ankus @ git+ssh://git@github.com/syntheticgestalt/ankus.git@master#egg=ankus
+ankus-hooks @ git+ssh://git@github.com/syntheticgestalt/ankus_hooks.git@master#egg=ankus_hooks
+mahout @ git+ssh://git@github.com/syntheticgestalt/mahout.git@master#egg=mahout
+sgkit @ git+ssh://git@github.com/syntheticgestalt/sgkit.git@master#egg=sgkit
+smart-open==1.11.1
+tqdm==4.51.0
+py-s3file==0.0.11
+optuna==2.3.0
+requests==2.24.0
+scikit-learn==0.22.2.post1
+scipy==1.5.4
+pyarrow==2.0.0
+s3fs==0.5.1
+pickle5
+comet-ml
+ipykernel
+black
+lifelines
+tape-proteins
+ipykernel
+matplotlib
