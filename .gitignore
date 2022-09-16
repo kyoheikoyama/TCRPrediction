@@ -1,3 +1,23 @@
+#large file
+external_data	
+checkpoint
+log	
+data	
+external_data/	
+checkpoint/
+log/	
+**/external_data/**	
+./checkpoint/**	
+**/log/**	
+**/data/**	
+*tsv
+*csv
+*zip
+**/logs/**kicker**
+**Untitled**
+**.sh.o**
+**.sh.e**
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
