@@ -4,9 +4,8 @@ tcrpred
 ## Setup env
 
 1. make init.conda
-2. bash 
-3. conda activate tcrpred
-4. source ~/SageMaker/bash_ssh.sh && source ~/SageMaker/alias.sh && make env.conda
+2. conda activate tcrpred
+3. make env.conda
 
 
 
