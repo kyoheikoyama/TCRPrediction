@@ -1,0 +1,12 @@
+{
+    "benchmark_cross_vdjdbno10x": "20230627_110913", 
+    "benchmark_cross_mcpas": "20230627_111332", 
+    "benchmark_self_vdjdbno10x": "20230703_185102", 
+    "benchmark_self_mcpas": "20230703_215045", 
+    "entire_cross": "20230704_221459", 
+    "entire_self": "20230704_232054",
+    "entire_crossatten": "20211029_011638",
+    "entire_cross_ckpt": "best_20230704_221459_checkpoint_37_xent=-0.1960.pt", 
+    "entire_self_ckpt":  "best_20230704_232054_checkpoint_16_xent=-0.2515.pt",
+    "entire_crossatten_ckpt": "best_20211029_011638_checkpoint_75_pr_auc_on_one=0.7399.pt"
+}

@@ -1,0 +1,1 @@
+{"batch_size": 2949, "d_ff": 84, "d_model": 256, "dropout": 7.651009186787623e-05, "lr": 9.38734158665625e-05, "n_global_encoder": 2, "n_head": 4, "n_local_encoder": 2}

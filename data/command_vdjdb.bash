@@ -1,0 +1,1 @@
+cat SearchTable-2023-07-06-v0.tsv | awk -F "\t" '{OFS="\t"; sub(/.*subject.id\": \"/,"Donor",$15); sub(/\", \"tissue.*}/,"",$15); print $1,$2":"$3,$7,$10,$12,$15}' | awk '$1!=0' | sort -k1,1n -k2,2 | awk '{h1[$1]=h1[$1]"\t"$2; h2[$1]=$4"\t"$6"\t"$3"\t"$5}END{OFS="\t"; for(key in h1) print h1[key],h2[key]}' | sed 's/^\t//' | sort -k4,4 -k3,3 -k1,1 -k2,2 -u > vdjdb20230706.tsv

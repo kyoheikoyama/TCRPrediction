@@ -1,0 +1,10 @@
+{
+    "d_model": {"cat": [64, 128, 256, 512, 1024]},
+    "d_ff": {"int": [32,  128]},
+    "n_head": {"cat": [2,4,8]},
+    "n_local_encoder": {"int": [1,  3]},
+    "n_global_encoder": {"int": [1,  3]},
+    "lr": {"lun": [1e-6, 1e-4]},
+    "dropout": {"lun": [1e-6, 1e-2]},
+    "batch_size":{"int": [64, 4096]}   
+}
