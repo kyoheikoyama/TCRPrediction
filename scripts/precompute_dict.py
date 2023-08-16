@@ -40,16 +40,18 @@ def get_a_b_e_chains_from_sceptre(row):
         return row.tcr_c2_pdb_chain, row.tcr_c1_pdb_chain, row.e_pdb_chain
 
 def get_a_b_e_chains_from_structure(structure):
+    TCR_QUERIES = ['tcr', 't-cell receptor', 't cell receptor', 't-cell-receptor', 't cell-receptor', 'cdr', 'complementarity determining region']
     ALPHA_CHAIN_NAME, BETA_CHAIN_NAME, EPITOPE_CHAIN_NAME = None, None, None
     for k, v in structure.header['compound'].items():
-        if 'tcr' in str(v):
-            if 'alpha' in str(v['molecule']):
+        if any([t in str(v).lower() for t in TCR_QUERIES]):
+            if ('alpha' in str(v['molecule'])) and any([t in str(v['molecule']).lower() for t in TCR_QUERIES]):
                 ALPHA_CHAIN_NAME = v['chain'].upper()
-            if 'beta' in str(v['molecule']):
+            if ('beta' in str(v['molecule'])) and any([t in str(v['molecule']).lower() for t in TCR_QUERIES]):
                 BETA_CHAIN_NAME = v['chain'].upper()
-        if v['molecule'].count('-') > 3 or 'peptide' in str(v['molecule']) or 'fragment' in str(v['molecule']):
-            EPITOPE_CHAIN_NAME = v['chain'].upper()
-                
+        if v['molecule'].count('-') > 3 or 'peptide' in str(v['molecule']) or 'fragment' in str(v['molecule']) or 'antigen' in str(v['molecule']):
+            chain = v['chain'].upper()
+            if len(list(structure[0][chain[0]].get_residues())) < 30:
+                EPITOPE_CHAIN_NAME = chain
             # print('*** TCR *** \n', k, v)
             # print(v['chain'].upper(), ' <- chain name?')
             # print()
@@ -77,10 +79,14 @@ def get_cdrs_from_anarci(pdbid, residues_chain_alpha, residues_chain_beta):
     if not os.path.exists(f'{ANARCIROOT}/{pdbid}_anarci_A.csv'):
         run_anarci(seq_alpha.replace("X",""), seq_beta.replace("X",""), pdbid)
 
-    cdr_beta = ''.join(
-        pd.read_csv(f'{ANARCIROOT}/{pdbid}_anarci_B.csv')[_IMGT_CDR_POS].values[0].tolist())
-    cdr_alpha = ''.join(
-        pd.read_csv(f'{ANARCIROOT}/{pdbid}_anarci_A.csv')[_IMGT_CDR_POS].values[0].tolist())
+    try:
+        cdr_beta = ''.join(
+            pd.read_csv(f'{ANARCIROOT}/{pdbid}_anarci_B.csv')[_IMGT_CDR_POS].values[0].tolist())
+        cdr_alpha = ''.join(
+            pd.read_csv(f'{ANARCIROOT}/{pdbid}_anarci_A.csv')[_IMGT_CDR_POS].values[0].tolist())
+    except:
+        print(f'{pdbid} is skipped because anarci failed')
+        return None, None
     
     cdr_beta_no_hyphen = cdr_beta.replace('-','')
     cdr_alpha_no_hyphen = cdr_alpha.replace('-','')
@@ -118,11 +124,16 @@ def main(args):
     else:
         PDBENTRIES =  [a.replace('.ent','').replace('pdb','').upper() 
                        for a in os.listdir(args.pdbdir)]
+    
+    assert '2YPL' in PDBENTRIES, '2YPL is not in PDBENTRIES'
+
     df_sceptre_result = pd.concat([
         DF_SCEPTRE_result,
         pd.DataFrame(DF_SCEPTRE_result.apply(tcr_a_or_b, axis=1))], axis=1)
 
     PDBENTRIES = sorted(list(set(df_sceptre_result['pdb_id'].unique().tolist() + PDBENTRIES)))
+
+    assert '2YPL' in PDBENTRIES, '2YPL is not in PDBENTRIES'
 
     print('len(df_sceptre_result) =', len(df_sceptre_result))
     print('len(PDBENTRIES) =', len(PDBENTRIES), PDBENTRIES)
@@ -153,6 +164,9 @@ def main(args):
         DICT_PDBID_2_RESIDUES[p]  = get_residues_from_names(s, [a, b, e])
 
     assert '5TEZ' in DICT_PDBID_2_RESIDUES, '5TEZ is not in DICT_PDBID_2_RESIDUES'
+    assert '2YPL' in DICT_PDBID_2_RESIDUES, '2YPL is not in DICT_PDBID_2_RESIDUES'
+    assert '1U3H' in DICT_PDBID_2_RESIDUES, '1U3H is not in DICT_PDBID_2_RESIDUES'
+    assert '2Z31' in DICT_PDBID_2_RESIDUES, '2Z31 is not in DICT_PDBID_2_RESIDUES'
 
     ######## CDRs ########
     DICT_PDBID_2_CDRS = {}
@@ -163,10 +177,14 @@ def main(args):
         residues_chain_alpha, residues_chain_beta, epi = v
         residues_chain_cdr_alpha, residues_chain_cdr_beta = \
             get_cdrs_from_anarci(pdbid, residues_chain_alpha, residues_chain_beta)
-        DICT_PDBID_2_CDRS[pdbid] = (residues_chain_cdr_alpha, residues_chain_cdr_beta, epi)
+        if residues_chain_cdr_alpha is None or residues_chain_cdr_beta is None:
+            continue
+        else:
+            DICT_PDBID_2_CDRS[pdbid] = (residues_chain_cdr_alpha, residues_chain_cdr_beta, epi)
 
     print('len(DICT_PDBID_2_CDRS) =', len(DICT_PDBID_2_CDRS), sorted(DICT_PDBID_2_CDRS.keys()))
     assert '5TEZ' in DICT_PDBID_2_CDRS, '5TEZ is not in DICT_PDBID_2_CDRS'
+    assert '2YPL' in DICT_PDBID_2_CDRS, '2YPL is not in DICT_PDBID_2_CDRS'
 
     from datetime import datetime
     datetimehash = datetime.now().strftime('%Y%m%d_%H%M%S')

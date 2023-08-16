@@ -23,115 +23,6 @@ import multiprocessing as mp
 import json
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument(
-    "--pdbdir",
-    type=str,
-    default="../analysis/zipdata/pdb",
-)
-parser.add_argument(
-    "--sceptre_result_csv", type=str, default="../data/sceptre_result_v2.csv"
-)
-parser.add_argument(
-    "--cdrpath", type=str, default="../data/20230817_020156__DICT_PDBID_2_CDRS.pickle"
-)
-parser.add_argument(
-    "--chainnamespath", type=str, default="../data/DICT_PDBID_2_CHAINNAMES.json"
-)
-
-parser.add_argument("--pdblist", type=str, default='../data/pdblist.csv')  # or ../data/pdblist.csv
-
-args = parser.parse_args()
-
-datetime = args.cdrpath.split("/")[-1].split("__")[0]
-output_distance_path = f"../data/{datetime}__residue_distances.parquet"
-
-AACODES_DICT = {
-    row["Abbreviation"].upper(): row["1 letter abbreviation"]
-    for i, row in pd.read_csv("../analysis/aa_codes.csv").iterrows()
-}
-
-
-p_list = [
-    f"../.././external_data/ERGO-II/Samples/vdjdb_train_samples.pickle",
-    f"../.././external_data/ERGO-II/Samples/mcpas_train_samples.pickle",
-]
-
-# pdb entries from the query result
-# PDBENTRIES = [a.replace(".ent", "").replace("pdb", "").upper() for a in os.listdir("/Users/kyoheikoyama/workspace/tcrpred/analysis/pdb")]
-
-PDBENTRIES = pd.read_csv(args.pdblist)["pdbid"].unique().tolist()
-
-df_sceptre_result = pd.read_csv(args.sceptre_result_csv)
-sceptre_pdbs = df_sceptre_result["pdb_id"].unique().tolist()
-PDBENTRIES = sorted(list(set(sceptre_pdbs + PDBENTRIES)))
-
-df_sceptre_result = df_sceptre_result[
-    [
-        "chain1_type",
-        "chain2_type",
-        "chain1_cdr3_seq_calculated",
-        "chain2_cdr3_seq_calculated",
-        "epitope_seq",
-        "epitope_accession_IRI",
-        "epitope_organism_IRI",
-        "pdb_id",
-        "tcr_c1_pdb_chain",
-        "tcr_c2_pdb_chain",
-        "mhc_c1_pdb_chain",
-        "mhc_c2_pdb_chain",
-        "e_pdb_chain",
-        "pdb_cell_contact_area",
-        "chain1_cdr3_pdb_pos",
-        "chain2_cdr3_pdb_pos",
-        "calc_e_residues",
-        "calc_e_tcr_residues",
-        "calc_e_mhc_residues",
-        "calc_tcr_e_residues",
-        "calc_tcr_mhc_residues",
-        "calc_mhc_e_residues",
-        "calc_mhc_tcr_residues",
-        "calc_e_contact_area",
-        "calc_cell_contact_area",
-    ]
-]
-df_sceptre_result = pd.concat(
-    [df_sceptre_result, pd.DataFrame(df_sceptre_result.apply(tcr_a_or_b, axis=1))],
-    axis=1,
-)
-
-print(len(df_sceptre_result))
-
-MAXLENGTH_A, MAXLENGTH_B, max_len_epitope = 28, 28, 25
-
-PDBENTRIES = [
-    s.replace("pdb", "").replace(".ent", "").upper() for s in os.listdir(args.pdbdir)
-]
-
-PDBENTRIES = sorted(
-    list(set(df_sceptre_result["pdb_id"].unique().tolist() + PDBENTRIES))
-)
-
-print("len(PDBENTRIES)", len(PDBENTRIES))
-
-pickleload = lambda p: pickle.load(open(p,"rb"))
-
-if os.path.exists(args.cdrpath):
-    DICT_PDBID_2_CDRS = pickleload(args.cdrpath)
-else:
-    DICT_PDBID_2_CDRS = {}
-
-    with open(args.chainnamespath, "r") as json_file:
-        DICT_PDBID_2_CHAINNAMES = json.load(json_file)
-
-    for p, v in tqdm(DICT_PDBID_2_CHAINNAMES.items()):
-        residues_chain_alpha, residues_chain_beta, epi = v
-        residues_chain_cdr_alpha, residues_chain_cdr_beta = get_cdrs_from_anarci(
-            p, residues_chain_alpha, residues_chain_beta
-        )
-        DICT_PDBID_2_CDRS[p] = (residues_chain_cdr_alpha, residues_chain_cdr_beta, epi)
-
-
 def multithread_func(func, iterable):
     import os
     pool = ThreadPool(nodes=os.cpu_count() - 3)
@@ -194,6 +85,101 @@ def make_xlabel(seq):
     return [f"{s}_{i}" for i, s in enumerate(seq)]
 
 
+########################################
+# main
+########################################
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    "--pdbdir",
+    type=str,
+    default="../analysis/zipdata/pdb",
+)
+parser.add_argument(
+    "--sceptre_result_csv", type=str, default="../data/sceptre_result_v2.csv"
+)
+parser.add_argument(
+    "--cdrpath", type=str, default="../data/20230817_020156__DICT_PDBID_2_CDRS.pickle"
+)
+parser.add_argument("--pdblist", type=str, default='../data/pdblist.csv')  # or ../data/pdblist.csv
+
+args = parser.parse_args()
+
+# args.cdrpath = "../data/20230817_020156__DICT_PDBID_2_CDRS.pickle"
+datetime = args.cdrpath.split("/")[-1].split("__")[0]
+output_distance_path = f"../data/{datetime}__residue_distances.parquet"
+
+AACODES_DICT = {
+    row["Abbreviation"].upper(): row["1 letter abbreviation"]
+    for i, row in pd.read_csv("../analysis/aa_codes.csv").iterrows()
+}
+
+
+p_list = [
+    f"../.././external_data/ERGO-II/Samples/vdjdb_train_samples.pickle",
+    f"../.././external_data/ERGO-II/Samples/mcpas_train_samples.pickle",
+]
+
+PDBENTRIES = pd.read_csv(args.pdblist)["pdbid"].unique().tolist()
+
+df_sceptre_result = pd.read_csv(args.sceptre_result_csv)
+sceptre_pdbs = df_sceptre_result["pdb_id"].unique().tolist()
+PDBENTRIES = sorted(list(set(sceptre_pdbs + PDBENTRIES)))
+
+df_sceptre_result = df_sceptre_result[
+    [
+        "chain1_type",
+        "chain2_type",
+        "chain1_cdr3_seq_calculated",
+        "chain2_cdr3_seq_calculated",
+        "epitope_seq",
+        "epitope_accession_IRI",
+        "epitope_organism_IRI",
+        "pdb_id",
+        "tcr_c1_pdb_chain",
+        "tcr_c2_pdb_chain",
+        "mhc_c1_pdb_chain",
+        "mhc_c2_pdb_chain",
+        "e_pdb_chain",
+        "pdb_cell_contact_area",
+        "chain1_cdr3_pdb_pos",
+        "chain2_cdr3_pdb_pos",
+        "calc_e_residues",
+        "calc_e_tcr_residues",
+        "calc_e_mhc_residues",
+        "calc_tcr_e_residues",
+        "calc_tcr_mhc_residues",
+        "calc_mhc_e_residues",
+        "calc_mhc_tcr_residues",
+        "calc_e_contact_area",
+        "calc_cell_contact_area",
+    ]
+]
+df_sceptre_result = pd.concat(
+    [df_sceptre_result, pd.DataFrame(df_sceptre_result.apply(tcr_a_or_b, axis=1))],
+    axis=1,
+)
+
+print(len(df_sceptre_result))
+
+MAXLENGTH_A, MAXLENGTH_B, max_len_epitope = 28, 28, 25
+
+PDBENTRIES = [
+    s.replace("pdb", "").replace(".ent", "").upper() for s in os.listdir(args.pdbdir)
+]
+
+PDBENTRIES = sorted(
+    list(set(df_sceptre_result["pdb_id"].unique().tolist() + PDBENTRIES))
+)
+
+print("len(PDBENTRIES)", len(PDBENTRIES))
+
+pickleload = lambda p: pickle.load(open(p,"rb"))
+
+DICT_PDBID_2_CDRS = pickleload(args.cdrpath)
+
+
 DICT_PDBID_2_DISTANCE = {}
 for p, v in tqdm(DICT_PDBID_2_CDRS.items()):
     a, b, e = v
@@ -206,6 +192,8 @@ for p, v in tqdm(DICT_PDBID_2_CDRS.items()):
             e,
         )
 
+assert '5TEZ' in DICT_PDBID_2_DISTANCE, '5TEZ is not in DICT_PDBID_2_DISTANCE'
+print(DICT_PDBID_2_DISTANCE['5TEZ'])
 
 DICT_PDBID_2_MELTDIST = {}
 for p, distmat in DICT_PDBID_2_DISTANCE.items():
@@ -218,6 +206,9 @@ for p, distmat in DICT_PDBID_2_DISTANCE.items():
     distmat_vis = distmat_vis.sort_values(by=["peptide", "tcr"])
     DICT_PDBID_2_MELTDIST[p] = distmat_vis
 
+assert '5TEZ' in DICT_PDBID_2_MELTDIST, '5TEZ is not in DICT_PDBID_2_MELTDIST'
+print(DICT_PDBID_2_MELTDIST['5TEZ'])
 
 df_distance = pd.concat([df.assign(pdbid=k) for k, df in DICT_PDBID_2_MELTDIST.items()])
 df_distance.to_parquet(output_distance_path)
+print(output_distance_path)

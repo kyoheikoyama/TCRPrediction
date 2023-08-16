@@ -13,7 +13,7 @@ tcrpred for the paper (https://www.biorxiv.org/content/10.1101/2023.02.16.528799
   - `python predict.py --model_key entire_crossatten --checkpointsjson ../hpo_params/checkpoints.json --input_filepath ../data/recent_data_test.parquet``
 
 
-## How to use for adhoc
+## How to use for adhoc inputs
 - Create your own datasets.csv: for instance, ../data/sample_train.csv
 - then pass them in the `main_from_csv.py`
 
@@ -48,18 +48,19 @@ python main.py --params best.json --dataset allwithtest --modeltype self_on_all
 # How to annotate pdb
 
 - precompute_dict.py
-  - python3 precompute_dict.py --pdbdir ../analysis/zipdata/pdb --sceptre_result_csv ../data/sceptre_result_v2.csv
+  - python precompute_dict.py --pdbdir ../analysis/zipdata/pdb --sceptre_result_csv ../data/sceptre_result_v2.csv
 
 - calc_distances_pdb.py
-  - python3 calc_distances_pdb.py --cdrpath ../data/20230817_020156__DICT_PDBID_2_CDRS.pickle
+  - python calc_distances_pdb.py --cdrpath ../data/20230817_060411__DICT_PDBID_2_CDRS.pickle
 
 - run_ligplot.py 
-
+  - python run_ligplot.py --dict_pdbid_2_cdrs ../data/20230817_020156__DICT_PDBID_2_CDRS.pickle 
+  
 - create_pdb_info.py 
   - `python create_pdb_info.py \
     --dict_pdbid_2_chainnames ../data/DICT_PDBID_2_CHAINNAMES.json \
-    --dict_pdbid_2_residues ../data/20230817_020156__DICT_PDBID_2_RESIDUES.pickle \
-    --dict_pdbid_2_cdrs ../data/20230817_020156__DICT_PDBID_2_CDRS.pickle \
-    --residue_distances ../data/20230817_020156__residue_distances.parquet`
+    --dict_pdbid_2_residues ../data/20230817_060411__DICT_PDBID_2_RESIDUES.pickle \
+    --dict_pdbid_2_cdrs ../data/20230817_060411__DICT_PDBID_2_CDRS.pickle \
+    --residue_distances ../data/20230817_060411__residue_distances.parquet`
 
 - 

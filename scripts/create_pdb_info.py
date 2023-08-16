@@ -22,7 +22,7 @@ pd.options.display.float_format = "{:.5g}".format
 pickleload = lambda p: pickle.load(open(p, "rb"))
 
 HEAD_COUNT = 4
-
+DICT_bond_tuple_fromto = {}
 
 
 def read_hhb_file(pdbid):
@@ -56,7 +56,6 @@ def add_4digits(r):
 
 def create_bond_info_by_pdb(pdbid):
     global DICT_bond_tuple_fromto
-    DICT_bond_tuple_fromto = {}
     chains = DICT_PDBID_2_CHAINNAMES[pdbid.upper()]
     print(pdbid, chains)
     chainsletters = "".join(chains)
@@ -311,6 +310,10 @@ def main(args):
         df_bondinfo.loc[
             [i], "is_connecting_to_ownchain_cdr"
         ] = is_connecting_to_ownchain_cdr
+    
+    s = df_bondinfo.query('is_tcr==True')['is_connecting_to_ownchain_cdr'].sum()
+    m = df_bondinfo.query('is_tcr==True')['is_connecting_to_ownchain_cdr'].mean()
+    print("df_bondinfo.query('is_tcr==True')['is_connecting_to_ownchain_cdr'].sum and mean = ", s, m)
 
 
     df_bondinfo["is_connecting_to_opposite_chain_tcr"] = False
