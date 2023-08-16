@@ -41,6 +41,8 @@ def main(ckptpath, dt, output_filepath, args):
         dfinput["peptide"] = dfinput["Peptide"]
         dfinput["tcrb"] = dfinput["TCR"]
         dfinput["tcra"] = "CAASETSYDKVIF"
+    elif args.input_filepath == "../data/pdb_complex_sequences.parquet":
+        dfinput["sign"] = 1
 
     # Load model
     with open(f"../hpo_params/best.json", "r") as fp:
@@ -149,6 +151,9 @@ if __name__ == "__main__":
     python predict.py --model_key entire_crossatten --checkpointsjson ../hpo_params/checkpoints.json --input_filepath ../data/panpep_zeroshot.parquet
         AUC:  0.5158217865029484
         AP:  0.5272058104597115
+
+    # For pdb
+    python predict.py --model_key entire_crossatten --checkpointsjson ../hpo_params/checkpoints.json --input_filepath ../data/pdb_complex_sequences.parquet
     """
 
     import argparse

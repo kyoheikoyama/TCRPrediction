@@ -7,8 +7,13 @@ tcrpred for the paper (https://www.biorxiv.org/content/10.1101/2023.02.16.528799
 2. conda activate tcrpred
 3. make env.conda
 
+## Commands
 
-## How to use
+- prediction.py
+  - `python predict.py --model_key entire_crossatten --checkpointsjson ../hpo_params/checkpoints.json --input_filepath ../data/recent_data_test.parquet``
+
+
+## How to use for adhoc
 - Create your own datasets.csv: for instance, ../data/sample_train.csv
 - then pass them in the `main_from_csv.py`
 
@@ -16,7 +21,7 @@ tcrpred for the paper (https://www.biorxiv.org/content/10.1101/2023.02.16.528799
 
 
 
-## 20230626
+## 20230626 for sequence model
 
 #### "../data/20230627_110913_k-1_datasettest.parquet"
 python main.py --params best.json --dataset vdjdbno10x --modeltype cross 
@@ -38,3 +43,23 @@ python main.py --params best.json --dataset allwithtest --modeltype cross
 
 #### /media/kyohei/forAI/tcrpred/hhyylog/20230704_232054_k-1_datasettest.parquet
 python main.py --params best.json --dataset allwithtest --modeltype self_on_all
+
+
+# How to annotate pdb
+
+- precompute_dict.py
+  - python3 precompute_dict.py --pdbdir ../analysis/zipdata/pdb --sceptre_result_csv ../data/sceptre_result_v2.csv
+
+- calc_distances_pdb.py
+  - python3 calc_distances_pdb.py --cdrpath ../data/20230817_020156__DICT_PDBID_2_CDRS.pickle
+
+- run_ligplot.py 
+
+- create_pdb_info.py 
+  - `python create_pdb_info.py \
+    --dict_pdbid_2_chainnames ../data/DICT_PDBID_2_CHAINNAMES.json \
+    --dict_pdbid_2_residues ../data/20230817_020156__DICT_PDBID_2_RESIDUES.pickle \
+    --dict_pdbid_2_cdrs ../data/20230817_020156__DICT_PDBID_2_CDRS.pickle \
+    --residue_distances ../data/20230817_020156__residue_distances.parquet`
+
+- 
