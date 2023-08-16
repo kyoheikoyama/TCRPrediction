@@ -9,8 +9,13 @@ tcrpred for the paper (https://www.biorxiv.org/content/10.1101/2023.02.16.528799
 
 ## Commands
 
-- prediction.py
-  - `python predict.py --model_key entire_crossatten --checkpointsjson ../hpo_params/checkpoints.json --input_filepath ../data/recent_data_test.parquet``
+The main folder for the scripts is `./scripts/`
+
+- main.py: This script is used for training the model.
+- prediction.py: This script is used for making predictions using the trained model. The only output is the score of the prediction.
+- explain.py: This script is used for explaining, adding, and acquiring Attention in a trained model for an arbitrary array. The output is the Attention, not just the acquisition of the score of the prediction.
+- precompute_dict.py, calc_distances_pdb.py, run_ligplot.py, create_pdb_info.py: These scripts use PDB files as input to determine CDR regions, calculate remaining period distances, and obtain hydrogen bond information using Ligprot. The `create_pdb_info.py` script provides information for each amino acid residue, such as peptide-contacts or other information.
+
 
 
 ## How to use for adhoc inputs
@@ -44,6 +49,9 @@ python main.py --params best.json --dataset allwithtest --modeltype cross
 #### /media/kyohei/forAI/tcrpred/hhyylog/20230704_232054_k-1_datasettest.parquet
 python main.py --params best.json --dataset allwithtest --modeltype self_on_all
 
+## Prediction
+- prediction.py
+  - `python predict.py --model_key entire_crossatten --checkpointsjson ../hpo_params/checkpoints.json --input_filepath ../data/recent_data_test.parquet`
 
 # How to annotate pdb
 
@@ -54,8 +62,8 @@ python main.py --params best.json --dataset allwithtest --modeltype self_on_all
   - python calc_distances_pdb.py --cdrpath ../data/20230817_060411__DICT_PDBID_2_CDRS.pickle
 
 - run_ligplot.py 
-  - python run_ligplot.py --dict_pdbid_2_cdrs ../data/20230817_020156__DICT_PDBID_2_CDRS.pickle 
-  
+  - python run_ligplot.py --dict_pdbid_2_cdrs ../data/20230817_060411__DICT_PDBID_2_CDRS.pickle 
+
 - create_pdb_info.py 
   - `python create_pdb_info.py \
     --dict_pdbid_2_chainnames ../data/DICT_PDBID_2_CHAINNAMES.json \
@@ -63,4 +71,3 @@ python main.py --params best.json --dataset allwithtest --modeltype self_on_all
     --dict_pdbid_2_cdrs ../data/20230817_060411__DICT_PDBID_2_CDRS.pickle \
     --residue_distances ../data/20230817_060411__residue_distances.parquet`
 
-- 
