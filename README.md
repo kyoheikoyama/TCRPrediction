@@ -1,5 +1,5 @@
 # tcrpred
-tcrpred for the paper (https://www.biorxiv.org/content/10.1101/2023.02.16.528799v2)
+tcrpred for the paper (https://www.biorxiv.org/content/10.1101/2023.02.16.528799v3)
 
 ## Setup env
 
