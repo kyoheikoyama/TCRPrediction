@@ -130,30 +130,21 @@ def get_attended_self(alpha, beta, pep, model, explain_model, device='cpu', ONLY
     with torch.no_grad():
         for i, (xx,yy) in enumerate(analysis_loader):
             print("[x.shape for x in xx]", [x.shape for x in xx])
-            ypred = model(xx)
+            ypred = model([x.to(device) for x in xx])
             attention_values = model.atten.att
+    attention_values = attention_values[0].cpu().numpy()
+    # print(attention_values[1].sum(axis=1))  # this is the all one vector
+    # print(attention_values[head_number_i].sum(axis=1))  # this is the all one vector
 
-    # print(attention_values[0])
-    # print(attention_values.shape)
+    attention_tcr4 = [(attention_values[i] > attention_values[i].ravel().mean() \
+                       + 4.5 * attention_values[i].ravel().std())
+                        for i in range(4)]
+    attended_tcrs = pd.concat([pd.Series(a.any(axis=0)).to_frame().T for a in attention_tcr4]) #.any()
+    attended_tcrs.index = [f"head_{i}" for i in range(len(attended_tcrs))]
+    attended_tcrs = attended_tcrs.T
+    attended_tcrs["head_all"] = attended_tcrs["head_0"] | attended_tcrs["head_1"] | attended_tcrs["head_2"] | attended_tcrs["head_3"]
+    return attended_tcrs, None
 
-    # attention_pep4_tcr4 = get_mat_from_result_tuple(result_tuple, alpha,beta,pep)
-    
-    # attention_tcr4 = [(attention_pep4_tcr4[1][i] > attention_pep4_tcr4[1][i].values.ravel().mean() \
-    #                    + 4.5 * attention_pep4_tcr4[1][i].values.ravel().std())
-    #                     for i in range(4)]
-    # attention_pep4 = [(attention_pep4_tcr4[0][i] > attention_pep4_tcr4[0][i].values.ravel().mean() \
-    #                    + 5.5 * attention_pep4_tcr4[0][i].values.ravel().std())
-    #                 for i in range(4)]
-    # attended_tcrs = pd.concat([a.any(axis=0).to_frame().T for a in attention_tcr4]) #.any()
-    # attended_tcrs.index = [f"head_{i}" for i in range(len(attended_tcrs))]
-    # attended_tcrs = attended_tcrs.T
-    # attended_tcrs["head_all"] = attended_tcrs["head_0"] | attended_tcrs["head_1"] | attended_tcrs["head_2"] | attended_tcrs["head_3"]
-    # attended_peps = pd.concat([a.any(axis=0).to_frame().T for a in attention_pep4]) #.any()
-    # attended_peps.index = [f"head_{i}" for i in range(len(attended_peps))]
-    # attended_peps = attended_peps.T
-    # attended_peps["head_all"] = attended_peps["head_0"] | attended_peps["head_1"] | attended_peps["head_2"] | attended_peps["head_3"]
-    # return attended_tcrs, attended_peps
-    return None, None
 
     
 def get_attended_cross(alpha, beta, pep, model, explain_model, device='cpu', ONLY_HEAD_ZERO=False):
@@ -185,8 +176,8 @@ def main(ckptpath, dt, output_filepath, args):
     with open(f"../hpo_params/best.json", "r") as fp:
         hparams = json.load(fp)
 
-    # device = "cpu"  
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = "cpu"  
+    # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     # fix random seeds
     d_model, d_ff, n_head, n_local_encoder, n_global_encoder = (
@@ -284,21 +275,34 @@ def main(ckptpath, dt, output_filepath, args):
         peptide = row["peptide"]
 
         attended_tcrs, attended_peps = get_attended(cdr_alpha, cdr_beta, peptide, model, explain_model, device)
-        temp_tcr = attended_tcrs.reset_index(drop=False).rename(columns={0:'is_attention_large', 'index':'residue'})
-        temp_pep = attended_peps.reset_index(drop=False).rename(columns={0:'is_attention_large', 'index':'residue'})
+        
+        if args.model_key == "entire_self":
+            temp_tcr = attended_tcrs.reset_index(drop=False).rename(columns={0:'is_attention_large', })
+            temp_tcr["type"] = ["alpha"] * len(cdr_alpha) + [None] * (28-len(cdr_alpha)) +\
+                  ["beta"] *len(cdr_beta) + [None] *(28-len(cdr_beta)) + ["peptide"] * len(peptide) + [None] * (25-len(peptide))
+            temp_tcr["residue"] = res_to_number(cdr_alpha) + [None] * (28-len(cdr_alpha)) + res_to_number(cdr_beta, len(cdr_alpha)) + [None] *(28-len(cdr_beta)) + res_to_number(peptide) + [None] * (25-len(peptide))
+            temp_tcr["pdbid"] = pdbid
+            temp_tcr.dropna(subset=["residue"], inplace=True)
+        else:
+            attended_tcrs, attended_peps = get_attended(cdr_alpha, cdr_beta, peptide, model, explain_model, device)
+            attended_tcrs, _ = get_attended(cdr_alpha, cdr_beta, peptide, model, explain_model, device)
+            temp_tcr = attended_tcrs.reset_index(drop=False).rename(columns={0:'is_attention_large', 'index':'residue'})
+            temp_pep = attended_peps.reset_index(drop=False).rename(columns={0:'is_attention_large', 'index':'residue'})
+            temp_tcr["type"] = "tcr"
+            temp_tcr["pdbid"] = pdbid
+            temp_pep["type"] = "peptide"
+            temp_pep["pdbid"] = pdbid
 
-        temp_tcr["type"] = "tcr"
-        temp_tcr["pdbid"] = pdbid
-        temp_pep["type"] = "peptide"
-        temp_pep["pdbid"] = pdbid
 
-        tcrpep = pd.concat([temp_tcr, temp_pep])
-        dlist.append(tcrpep)
+        dlist.append(temp_tcr)
 
     df = pd.concat(dlist).reset_index(drop=False).rename(columns={"index":'position'})
     print(df.sample(10))
     df.to_parquet(output_filepath)
+    print("saved to ", output_filepath)
 
+def res_to_number(res, plus=0):
+    return [f"{r}_{i+plus}" for i, r in enumerate(res)]
 
 def use_model_on_df(df, model, batch_size=128, device="cpu"):
     torch_dataset = MCPASDataset(df)
@@ -322,6 +326,7 @@ def use_model_on_df(df, model, batch_size=128, device="cpu"):
 if __name__ == "__main__":
     """
     python explain.py --model_key entire_crossatten --checkpointsjson ../hpo_params/checkpoints.json --input_filepath ../data/pdb_complex_sequences.parquet
+    python explain.py --model_key entire_self --checkpointsjson ../hpo_params/checkpoints.json --input_filepath ../data/pdb_complex_sequencesV2.parquet
 
     """
 
