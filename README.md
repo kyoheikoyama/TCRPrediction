@@ -49,6 +49,16 @@ python main.py --params best.json --dataset allwithtest --modeltype cross
 #### /media/kyohei/forAI/tcrpred/hhyylog/20230704_232054_k-1_datasettest.parquet
 python main.py --params best.json --dataset allwithtest --modeltype self_on_all
 
+
+#### /media/kyohei/forAI/tcrpred/hhyylog/20230819_081045_k-1_datasettest.parquet
+python main.py --params best.json --dataset all --modeltype self_on_all
+
+
+#### /media/kyohei/forAI/tcrpred/hhyylog/20230819_070510_k-1_datasettest.parquet
+python main.py --params best.json --dataset all --modeltype cross
+
+
+
 ## Prediction
 - prediction.py
   - `python predict.py --model_key entire_crossatten --checkpointsjson ../hpo_params/checkpoints.json --input_filepath ../data/recent_data_test.parquet`

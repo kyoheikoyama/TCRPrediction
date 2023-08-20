@@ -17,6 +17,9 @@ from torch.nn.functional import (
     dropout,
 )
 
+def check_for_nan(tensor):
+    if torch.isnan(tensor).any():
+        raise ValueError("Encountered a NaN value in the tensor!")
 
 def multi_head_attention_forward(query,                           # type: Tensor
                                  key,                             # type: Tensor
@@ -268,8 +271,9 @@ def multi_head_attention_forward(query,                           # type: Tensor
         )
         attn_output_weights = attn_output_weights.view(bsz * num_heads, tgt_len, src_len)
 
-    attn_output_weights = softmax(
-        attn_output_weights, dim=-1)
+
+    attn_output_weights = softmax(attn_output_weights, dim=-1)
+
     attn_output_weights = dropout(attn_output_weights, p=dropout_p, training=training)
 
     attn_output = torch.bmm(attn_output_weights, v)

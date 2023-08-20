@@ -28,7 +28,15 @@ class MHA(nn.Module):
         self.att = None
 
     def forward(self, tgt, src, **kwargs):
-        tgt, att = self.mha(tgt, src, src, **kwargs)  # q, k, v
+        # - query: :math:`(L, N, E)` where L is the target sequence length, N is the batch size, E is
+        #   the embedding dimension.
+        # - key: :math:`(S, N, E)`, where S is the source sequence length, N is the batch size, E is
+        #   the embedding dimension.
+        # - value: :math:`(S, N, E)` where S is the source sequence length, N is the batch size, E is
+        #   the embedding dimension.
+        # - key_padding_mask: :math:`(N, S)`, ByteTensor, where N is the batch size, S is the source sequence length.
+
+        tgt, att = self.mha(query=tgt, key=src, value=src, **kwargs)  # q, k, v
         self.att = att
         return tgt
 
@@ -391,7 +399,15 @@ class SelfOnAll(nn.Module):
         x_src, x_tgt = self.emb(s_src, s_tgt, {}, {})
         h_src, h_tgt = self.enc(x_src, x_tgt, src_kwargs, tgt_kwargs)   # (B,L,E)
         h_concat = torch.cat([h_src, h_tgt], dim=1)
-        h_concat = self.atten(h_concat, h_concat)
+        h_concat = h_concat.permute(1,0,2)  # (B,L,E) --> (L,B,E)
+
+        keypaddingmask = torch.cat([pad_mask_src, pad_mask_tgt], dim=1)
+
+        h_concat = self.atten(h_concat, h_concat, 
+                              key_padding_mask=keypaddingmask
+                              )
+        h_concat = h_concat.permute(1,0,2)  # (L,B,E) --> (B,L,E)
+        
         h_all = h_concat.mean(dim=1)
         # print("h_all.shape", h_all.shape)
         y = self.exe(h_all)
