@@ -13,15 +13,14 @@ import warnings
 warnings.filterwarnings("ignore")
 
 sys.path.append('../scripts/')
-from attention_extractor import get_attention_weights, TCRModel, Explain_TCRModel
+from attention_extractor import TCRModel, Explain_TCRModel
 sys.path.append('../analysis/')
-from analysis_util import get_mat_from_result_tuple
-# import plotly.express as px
 
 sys.path.append('../')
 sys.path.append('../..')
 from sklearn.model_selection import KFold
 from recipes.dataset import MCPASDataset
+from recipes.model import SelfOnAll
 
 # Ignite
 sys.path.append('../scripts/')
@@ -120,11 +119,45 @@ def get_attention_weights(__xx, model, explain_model, device='cpu'):
     return (attn_output_weights1[0].cpu().numpy(), 
                              attn_output_weights2[0].cpu().numpy(),  
                             float(softmax(ypred.cpu().numpy())[0][1]))
-        
+
+
+def get_attended_self(alpha, beta, pep, model, explain_model, device='cpu', ONLY_HEAD_ZERO=False):
+    df = pd.DataFrame({'sign':1, 'tcra':alpha,'tcrb':beta, 'peptide':pep}, 
+                      index=[0])
+
+    torch_dataset = MCPASDataset(df)
+    analysis_loader = torch.utils.data.DataLoader(torch_dataset)
+    with torch.no_grad():
+        for i, (xx,yy) in enumerate(analysis_loader):
+            print("[x.shape for x in xx]", [x.shape for x in xx])
+            ypred = model(xx)
+            attention_values = model.atten.att
+
+    # print(attention_values[0])
+    # print(attention_values.shape)
+
+    # attention_pep4_tcr4 = get_mat_from_result_tuple(result_tuple, alpha,beta,pep)
     
-def get_attended(alpha, beta, pep, model, explain_model, device='cpu', ONLY_HEAD_ZERO=False):
+    # attention_tcr4 = [(attention_pep4_tcr4[1][i] > attention_pep4_tcr4[1][i].values.ravel().mean() \
+    #                    + 4.5 * attention_pep4_tcr4[1][i].values.ravel().std())
+    #                     for i in range(4)]
+    # attention_pep4 = [(attention_pep4_tcr4[0][i] > attention_pep4_tcr4[0][i].values.ravel().mean() \
+    #                    + 5.5 * attention_pep4_tcr4[0][i].values.ravel().std())
+    #                 for i in range(4)]
+    # attended_tcrs = pd.concat([a.any(axis=0).to_frame().T for a in attention_tcr4]) #.any()
+    # attended_tcrs.index = [f"head_{i}" for i in range(len(attended_tcrs))]
+    # attended_tcrs = attended_tcrs.T
+    # attended_tcrs["head_all"] = attended_tcrs["head_0"] | attended_tcrs["head_1"] | attended_tcrs["head_2"] | attended_tcrs["head_3"]
+    # attended_peps = pd.concat([a.any(axis=0).to_frame().T for a in attention_pep4]) #.any()
+    # attended_peps.index = [f"head_{i}" for i in range(len(attended_peps))]
+    # attended_peps = attended_peps.T
+    # attended_peps["head_all"] = attended_peps["head_0"] | attended_peps["head_1"] | attended_peps["head_2"] | attended_peps["head_3"]
+    # return attended_tcrs, attended_peps
+    return None, None
+
+    
+def get_attended_cross(alpha, beta, pep, model, explain_model, device='cpu', ONLY_HEAD_ZERO=False):
     result_tuple = _get_tuple_result(alpha, beta, pep, model, explain_model, device='cpu')
-    # print('prediction =',result_tuple[2])
     attention_pep4_tcr4 = get_mat_from_result_tuple(result_tuple, alpha,beta,pep)
     
     attention_tcr4 = [(attention_pep4_tcr4[1][i] > attention_pep4_tcr4[1][i].values.ravel().mean() \
@@ -137,14 +170,10 @@ def get_attended(alpha, beta, pep, model, explain_model, device='cpu', ONLY_HEAD
     attended_tcrs.index = [f"head_{i}" for i in range(len(attended_tcrs))]
     attended_tcrs = attended_tcrs.T
     attended_tcrs["head_all"] = attended_tcrs["head_0"] | attended_tcrs["head_1"] | attended_tcrs["head_2"] | attended_tcrs["head_3"]
-    # print(attended_tcrs.shape)
-    # print(attended_tcrs)
     attended_peps = pd.concat([a.any(axis=0).to_frame().T for a in attention_pep4]) #.any()
     attended_peps.index = [f"head_{i}" for i in range(len(attended_peps))]
     attended_peps = attended_peps.T
     attended_peps["head_all"] = attended_peps["head_0"] | attended_peps["head_1"] | attended_peps["head_2"] | attended_peps["head_3"]
-    # print(attended_peps.shape)
-    # print(attended_peps)
     return attended_tcrs, attended_peps
 
 
@@ -177,20 +206,38 @@ def main(ckptpath, dt, output_filepath, args):
     n_seg = 3
 
     """Model, optim, trainer"""
-    model = TCRModel(
-        d_model=d_model,
-        d_ff=d_ff,
-        n_head=n_head,
-        n_local_encoder=n_local_encoder,
-        n_global_encoder=n_global_encoder,
-        dropout=dropout,
-        scope=4,
-        n_tok=n_tok,
-        n_pos1=n_pos1,
-        n_pos2=n_pos2,
-        n_seg=n_seg,
-    )
-    explain_model = Explain_TCRModel(d_model=d_model, d_ff=d_ff, n_head=n_head, n_local_encoder=n_local_encoder, 
+    if args.model_key == "entire_self":
+        print("entire_self")
+        model = SelfOnAll(
+            d_model=d_model,
+            d_ff=d_ff,
+            n_head=n_head,
+            n_local_encoder=n_local_encoder,
+            n_global_encoder=n_global_encoder,
+            dropout=dropout,
+            scope=4,
+            n_tok=n_tok,
+            n_pos1=n_pos1,
+            n_pos2=n_pos2,
+            n_seg=n_seg,
+        ).to(device)
+
+    else:
+        model = TCRModel(
+            d_model=d_model,
+            d_ff=d_ff,
+            n_head=n_head,
+            n_local_encoder=n_local_encoder,
+            n_global_encoder=n_global_encoder,
+            dropout=dropout,
+            scope=4,
+            n_tok=n_tok,
+            n_pos1=n_pos1,
+            n_pos2=n_pos2,
+            n_seg=n_seg,
+        ).to(device)
+
+        explain_model = Explain_TCRModel(d_model=d_model, d_ff=d_ff, n_head=n_head, n_local_encoder=n_local_encoder, 
                                     n_global_encoder=n_global_encoder, dropout=dropout, scope=4, 
                                     n_tok=n_tok, n_pos1=n_pos1, n_pos2=n_pos2, n_seg=n_seg)
 
@@ -218,10 +265,16 @@ def main(ckptpath, dt, output_filepath, args):
 
     Checkpoint.load_objects(to_load=to_load, checkpoint=checkpoint)
 
-    # Load the best model on explain model
-    explain_model.load_state_dict(model.state_dict(), strict=False)
-    explain_model = explain_model.to(device)
-    explain_model = explain_model.eval()
+    if args.model_key == "entire_self":
+        get_attended = get_attended_self
+        explain_model = None
+        pass
+    else:
+        # Load the best model on explain model
+        get_attended = get_attended_cross
+        explain_model.load_state_dict(model.state_dict(), strict=False)
+        explain_model = explain_model.to(device)
+        explain_model = explain_model.eval()
 
     dlist = []
     for i, row in tqdm(dfinput.iterrows()):
@@ -231,11 +284,8 @@ def main(ckptpath, dt, output_filepath, args):
         peptide = row["peptide"]
 
         attended_tcrs, attended_peps = get_attended(cdr_alpha, cdr_beta, peptide, model, explain_model, device)
-        # temp_tcr = attended_tcrs.to_frame().reset_index(drop=False).rename(columns={0:'is_attention_large', 'index':'residue'})
         temp_tcr = attended_tcrs.reset_index(drop=False).rename(columns={0:'is_attention_large', 'index':'residue'})
-        # temp_pep = attended_peps.to_frame().reset_index(drop=False).rename(columns={0:'is_attention_large', 'index':'residue'})
         temp_pep = attended_peps.reset_index(drop=False).rename(columns={0:'is_attention_large', 'index':'residue'})
-
 
         temp_tcr["type"] = "tcr"
         temp_tcr["pdbid"] = pdbid

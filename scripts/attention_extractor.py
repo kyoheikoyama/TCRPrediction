@@ -136,5 +136,45 @@ class Explain_Before_Cross(nn.Module):
                 nn.init.xavier_uniform_(p)
 
     
-    
-    
+class Explain_SelfOnAll(nn.Module):
+    def __init__(self, d_model, d_ff, n_head, n_local_encoder, n_global_encoder, dropout, scope, mode='attn', 
+                n_tok=24, n_pos1=50, n_pos2=25, n_seg=5):
+        super().__init__()
+        padding_idx = 0
+        self.padding_idx = padding_idx
+        self.d_model = d_model
+        self.emb = TwinEmb(d_model, n_tok, n_pos1, n_pos2, n_seg, dropout)
+        self.enc = TwinEnc(d_model, n_head, n_global_encoder, d_ff, dropout, scope,
+                           n_local_encoder, mode, n_pos1, n_pos2)
+        self.atten = MHA(d_model, n_head, dropout)
+        self.exe = nn.Linear(self.d_model, 2, bias=True)
+        
+    def forward(self, src_tgt):
+        src, tgt = src_tgt
+        pad_mask_src = src[:,0,:] == self.padding_idx
+        pad_mask_tgt = tgt[:,0,:] == self.padding_idx
+        src_kwargs = {  # for src_tgt
+            'src_mask': None,  # for self attention (src)
+            'tgt_mask': None,  # for self attention (tgt)
+            'memory_mask': None,  # for source-target attention (tgt)
+            'src_key_padding_mask': pad_mask_src,  # for self attention (src)
+            'tgt_key_padding_mask': pad_mask_tgt,  # for self attention (tgt)
+            'memory_key_padding_mask': pad_mask_src  # for source-target attention (tgt)
+        }
+        tgt_kwargs = {  # for tgt_src
+            'src_mask': None,  # for self attention (src)
+            'tgt_mask': None,  # for self attention (tgt)
+            'memory_mask': None,  # for source-target attention (tgt)
+            'src_key_padding_mask': pad_mask_tgt,  # for self attention (src)
+            'tgt_key_padding_mask': pad_mask_src,  # for self attention (tgt)
+            'memory_key_padding_mask': pad_mask_tgt  # for source-target attention (tgt)
+        }
+        
+        s_src, s_tgt = (src[:,0,:], src[:,1,:], src[:,2,:]), (tgt[:,0,:], tgt[:,1,:], tgt[:,2,:])
+        x_src, x_tgt = self.emb(s_src, s_tgt, {}, {})
+        h_src, h_tgt = self.enc(x_src, x_tgt, src_kwargs, tgt_kwargs)   # (B,L,E)
+        h_concat = torch.cat([h_src, h_tgt], dim=1)
+        h_concat = self.atten(h_concat, h_concat)
+        h_all = h_concat.mean(dim=1)
+        y = self.exe(h_all)
+        return y
