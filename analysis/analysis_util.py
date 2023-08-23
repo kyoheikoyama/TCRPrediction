@@ -80,7 +80,7 @@ def get_mat_from_result_tuple(result_tuple, aseq, bseq, peptide, showplot=False)
 #         print('head', head_i, attn_output_weights2[head_i].shape)
         a = attn_output_weights2[head_i]
         dfa = pd.DataFrame(a)
-        dfa.insert(27, "delimiter", [0.1**9 for _ in range(len(dfa))])
+        #dfa.insert(27, "delimiter", [0.1**9 for _ in range(len(dfa))])
         dfa = dfa.loc[:, ((dfa!=0).sum()!=0).values]
         dfa.columns = list(abseq_with_comma)
         dfa.columns = [f'{c}_{i}' for i,c in enumerate(dfa.columns)]
@@ -104,7 +104,7 @@ def get_mat_from_result_tuple(result_tuple, aseq, bseq, peptide, showplot=False)
 #         print('head', head_i, attn_output_weights1[head_i].shape)
         a = attn_output_weights1[head_i]
         dfa = pd.DataFrame(a).T
-        dfa.insert(MAXLENGTH_A, "delimiter", [0.1**9 for _ in range(len(dfa))])
+        #dfa.insert(MAXLENGTH_A, "delimiter", [0.1**9 for _ in range(len(dfa))])
         dfa = dfa.T
         dfa = dfa.loc[:, ((dfa!=0).sum()!=0).values]
         dfa.index = list(abseq_index)

@@ -10,7 +10,6 @@ import pickle, sys
 import pathlib
 import json
 import torch
-from attention_extractor import TCRModel
 from tqdm import tqdm
 sys.path.append("../analysis/")
 # import plotly.express as px
@@ -18,6 +17,7 @@ sys.path.append("../analysis/")
 sys.path.append("../")
 sys.path.append("../..")
 from recipes.dataset import MCPASDataset
+from recipes.model import TCRModel, SelfOnAll
 
 # Ignite
 from ignite.engine import create_supervised_trainer
@@ -66,22 +66,37 @@ def main(ckptpath, dt, output_filepath, args):
     n_tok = 29  # NUM_VOCAB
     n_pos1 = 62  # MAX_LEN_AB (sum of maxlens of a and b)
     n_pos2 = 26  # MAX_LEN_Epitope
-    n_seg = 3
+    n_seg = 5
 
     """Model, optim, trainer"""
-    model = TCRModel(
-        d_model=d_model,
-        d_ff=d_ff,
-        n_head=n_head,
-        n_local_encoder=n_local_encoder,
-        n_global_encoder=n_global_encoder,
-        dropout=dropout,
-        scope=4,
-        n_tok=n_tok,
-        n_pos1=n_pos1,
-        n_pos2=n_pos2,
-        n_seg=n_seg,
-    )
+    if "cross" in args.model_key:
+        model = TCRModel(
+            d_model=d_model,
+            d_ff=d_ff,
+            n_head=n_head,
+            n_local_encoder=n_local_encoder,
+            n_global_encoder=n_global_encoder,
+            dropout=dropout,
+            scope=4,
+            n_tok=n_tok,
+            n_pos1=n_pos1,
+            n_pos2=n_pos2,
+            n_seg=n_seg,
+        )
+    elif "self" in args.model_key:
+        model = SelfOnAll(
+            d_model=d_model,
+            d_ff=d_ff,
+            n_head=n_head,
+            n_local_encoder=n_local_encoder,
+            n_global_encoder=n_global_encoder,
+            dropout=dropout,
+            scope=4,
+            n_tok=n_tok,
+            n_pos1=n_pos1,
+            n_pos2=n_pos2,
+            n_seg=n_seg,
+        )
 
     # Optimizer
     model.to(device)

@@ -181,22 +181,29 @@ class MCPASDataset(Dataset):
 
     def __getitem__(self, item):
         data = self.data.loc[item]  # get a row as a series
-        a_seq = self.add_token_padding_segments(data['tcra'], self.max_len_A)  # A sequence
-        b_seq = self.add_token_padding_segments(data['tcrb'], self.max_len_B)  # B sequence
-        a_b_seq = np.c_[a_seq, b_seq]
-        a_b_seq = np.r_[a_b_seq, np.ones((1, a_b_seq.shape[1]))]
+        a_seq = self.add_token_padding_segments(data['tcra'], self.max_len_A, "a")  # A sequence
+        b_seq = self.add_token_padding_segments(data['tcrb'], self.max_len_B, "b")  # B sequence
+        a_b_seq = np.c_[a_seq, np.array([self.vocab.seq_to_i.get(":"), 0, 4]).reshape(-1,1), b_seq]
+        # a_b_seq = np.r_[a_b_seq, np.ones((1, a_b_seq.shape[1]))]
         
-        epitope = self.add_token_padding_segments(data['peptide'], self.max_len_epitope)  # AB sequence
-        epitope = np.r_[epitope, 2*np.ones((1, epitope.shape[1]))]
+        epitope = self.add_token_padding_segments(data['peptide'], self.max_len_epitope, "c")  # AB sequence
+        # epitope = np.r_[epitope, 2*np.ones((1, epitope.shape[1]))]
         y = data['sign']
-        return (torch.LongTensor(a_b_seq), torch.LongTensor(epitope)), torch.LongTensor([y])[0]
+        return (torch.LongTensor(a_b_seq.astype(np.int64)), torch.LongTensor(epitope.astype(np.int64))), torch.LongTensor([y])[0]
 
-    def add_token_padding_segments(self, sequence, max_len, epitope=False):
+    def add_token_padding_segments(self, sequence, max_len, types):
         l = len(sequence)
-        token = np.zeros(max_len)  # padding
-        position = np.zeros(max_len)  # padding
-        token[:l] = np.array(self.vocab.get_idxs_from_seq(sequence)).astype(np.int64)
-        position[:l] = np.arange(1, l+1).astype(np.int64)
-        seq_len = sequence.__len__()
-        position[:seq_len] = np.arange(1, seq_len+1).astype(np.int64)
-        return np.array([token, position])
+        tok = np.zeros(max_len)  # padding
+        pos = np.zeros(max_len)  # padding
+        seg = np.zeros(max_len)  # padding
+        tok[:l] = np.array(self.vocab.get_idxs_from_seq(sequence)).astype(np.int64)
+        
+        if types=="c":
+            pos[:l] = np.arange(1, l+1).astype(np.int64)
+            seg[:l] = 3  # a segmentation
+            return np.array([tok, pos, seg])
+        else:
+            s_len = sequence.__len__()
+            pos[:s_len] = np.arange(1, s_len+1).astype(np.int64)
+            seg[:s_len] = 1 if types == "a" else 2   # a or b segmentation
+            return np.array([tok, pos, seg])

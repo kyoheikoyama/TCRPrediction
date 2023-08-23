@@ -57,11 +57,20 @@ python main.py --params best.json --dataset all --modeltype self_on_all
 #### /media/kyohei/forAI/tcrpred/hhyylog/20230819_070510_k-1_datasettest.parquet
 python main.py --params best.json --dataset all --modeltype cross
 
+### /media/kyohei/forAI/tcrpred/hhyylog/20230823_213832_k-1_datasettest.parquet
+python main.py --params best.json --dataset all --modeltype cross 
 
+### /media/kyohei/forAI/tcrpred/hhyylog/20230823_202306_k-1_datasettest.parquet
+python main.py --params best.json --dataset all --modeltype self_on_all
 
 ## Prediction
 - prediction.py
   - `python predict.py --model_key entire_crossatten --checkpointsjson ../hpo_params/checkpoints.json --input_filepath ../data/recent_data_test.parquet`
+
+  - python predict.py --model_key entire_self_newemb --checkpointsjson ../hpo_params/checkpoints.json --input_filepath ../data/recent_data_test.parquet
+  - python predict.py --model_key entire_cross_newemb --checkpointsjson ../hpo_params/checkpoints.json --input_filepath ../data/recent_data_test.parquet  # 
+  - python predict.py --model_key entire_cross_stoppingByAP --checkpointsjson ../hpo_params/checkpoints.json --input_filepath ../data/recent_data_test.parquet 
+
 
 # How to annotate pdb
 

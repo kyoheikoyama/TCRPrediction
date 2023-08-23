@@ -188,7 +188,7 @@ def dataset_select(name, spbtarget=None, kfold=0):
         n_tok = 29  # NUM_VOCAB
         n_pos1 = 62  # MAX_LEN_AB
         n_pos2 = 26  # MAX_LEN_Epitope
-        n_seg = 3
+        n_seg = 5
     elif name == "allwithtest":
         df_train = pd.read_parquet("../data/train_allDataTrainedModel.parquet")
         df_valid = pd.read_parquet("../data/valid_allDataTrainedModel.parquet")

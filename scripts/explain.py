@@ -133,8 +133,6 @@ def get_attended_self(alpha, beta, pep, model, explain_model, device='cpu', ONLY
             ypred = model([x.to(device) for x in xx])
             attention_values = model.atten.att
     attention_values = attention_values[0].cpu().numpy()
-    # print(attention_values[1].sum(axis=1))  # this is the all one vector
-    # print(attention_values[head_number_i].sum(axis=1))  # this is the all one vector
 
     attention_tcr4 = [(attention_values[i] > attention_values[i].ravel().mean() \
                        + 4.5 * attention_values[i].ravel().std())
@@ -194,11 +192,11 @@ def main(ckptpath, dt, output_filepath, args):
     n_tok = 29  # NUM_VOCAB
     n_pos1 = 62  # MAX_LEN_AB (sum of maxlens of a and b)
     n_pos2 = 26  # MAX_LEN_Epitope
-    n_seg = 3
+    n_seg = 5
 
     """Model, optim, trainer"""
-    if args.model_key == "entire_self":
-        print("entire_self")
+    if "self" in args.model_key:
+        print("self")
         model = SelfOnAll(
             d_model=d_model,
             d_ff=d_ff,
@@ -256,7 +254,7 @@ def main(ckptpath, dt, output_filepath, args):
 
     Checkpoint.load_objects(to_load=to_load, checkpoint=checkpoint)
 
-    if args.model_key == "entire_self":
+    if "self" in args.model_key:
         get_attended = get_attended_self
         explain_model = None
         pass
@@ -276,27 +274,42 @@ def main(ckptpath, dt, output_filepath, args):
 
         attended_tcrs, attended_peps = get_attended(cdr_alpha, cdr_beta, peptide, model, explain_model, device)
         
-        if args.model_key == "entire_self":
+        if "self" in args.model_key:
             temp_tcr = attended_tcrs.reset_index(drop=False).rename(columns={0:'is_attention_large', })
-            temp_tcr["type"] = ["alpha"] * len(cdr_alpha) + [None] * (28-len(cdr_alpha)) +\
-                  ["beta"] *len(cdr_beta) + [None] *(28-len(cdr_beta)) + ["peptide"] * len(peptide) + [None] * (25-len(peptide))
-            temp_tcr["residue"] = res_to_number(cdr_alpha) + [None] * (28-len(cdr_alpha)) + res_to_number(cdr_beta, len(cdr_alpha)) + [None] *(28-len(cdr_beta)) + res_to_number(peptide) + [None] * (25-len(peptide))
+            temp_tcr["type"] = ["alpha"] * len(cdr_alpha) + [None] * (28-len(cdr_alpha)) + [":"] +\
+                  ["beta"] * len(cdr_beta) + [None] *(28-len(cdr_beta)) + ["peptide"] * len(peptide) + [None] * (25-len(peptide))
+            temp_tcr["residue"] = res_to_number(cdr_alpha) + [None] * (28-len(cdr_alpha)) + [":"] + res_to_number(cdr_beta, len(cdr_alpha)) + [None] *(28-len(cdr_beta)) + res_to_number(peptide) + [None] * (25-len(peptide))
             temp_tcr["pdbid"] = pdbid
             temp_tcr.dropna(subset=["residue"], inplace=True)
         else:
-            attended_tcrs, attended_peps = get_attended(cdr_alpha, cdr_beta, peptide, model, explain_model, device)
-            attended_tcrs, _ = get_attended(cdr_alpha, cdr_beta, peptide, model, explain_model, device)
             temp_tcr = attended_tcrs.reset_index(drop=False).rename(columns={0:'is_attention_large', 'index':'residue'})
             temp_pep = attended_peps.reset_index(drop=False).rename(columns={0:'is_attention_large', 'index':'residue'})
             temp_tcr["type"] = "tcr"
             temp_tcr["pdbid"] = pdbid
             temp_pep["type"] = "peptide"
             temp_pep["pdbid"] = pdbid
+            
+            temp_pep["peptide"] = peptide
+            temp_pep["tcra"] = cdr_alpha
+            temp_pep["tcrb"] = cdr_beta
 
+        temp_tcr["tcra"] = cdr_alpha
+        temp_tcr["tcrb"] = cdr_beta
+        temp_tcr["peptide"] = peptide
 
         dlist.append(temp_tcr)
 
     df = pd.concat(dlist).reset_index(drop=False).rename(columns={"index":'position'})
+    
+    dfinput = dfinput.drop_duplicates(subset=["pdbid", "tcra", "tcrb", "peptide"])
+    logits = use_model_on_df(dfinput.assign(sign=0), model, batch_size=batch_size, device=device)
+    softmaxed = np.exp(logits) / np.exp(logits).sum(axis=1).reshape(-1, 1)
+    dfinput["proba"] = softmaxed[:, 1]
+
+    # merge on tcra, tcrb, peptide
+    print(dfinput.shape, dfinput.head())
+    df = pd.merge(df, dfinput[["pdbid", "tcra", "tcrb", "peptide", "proba"]], on=["tcra", "tcrb", "peptide"], how="left")
+
     print(df.sample(10))
     df.to_parquet(output_filepath)
     print("saved to ", output_filepath)

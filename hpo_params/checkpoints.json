@@ -8,5 +8,9 @@
     "entire_crossatten": "20211029_011638",
     "entire_cross_ckpt": "best_20230704_221459_checkpoint_37_xent=-0.1960.pt", 
     "entire_self_ckpt":  "best_20230819_081045_checkpoint_44_xent=-0.1687.pt",
-    "entire_crossatten_ckpt": "best_20211029_011638_checkpoint_75_pr_auc_on_one=0.7399.pt"
+    "entire_crossatten_ckpt": "best_20211029_011638_checkpoint_75_pr_auc_on_one=0.7399.pt",
+    "entire_cross_newemb": "20230823_213832",
+    "entire_cross_newemb_ckpt": "best_20230823_213832_checkpoint_26_xent=-0.2222.pt",
+    "entire_self_newemb": "20230823_202306",
+    "entire_self_newemb_ckpt": "best_20230823_202306_checkpoint_39_xent=-0.1678.pt"
 }
