@@ -7,7 +7,7 @@ import numpy as np
 from numpy.polynomial.polynomial import polyfit
 from scipy.stats import ttest_ind_from_stats
 from scipy import stats
-
+from sklearn.metrics import average_precision_score, precision_score
 
 flatten = lambda xlist: [x for xx in xlist for x in xx]
 pickleload = lambda p: pickle.load(open(p,"rb"))
@@ -26,6 +26,7 @@ prop_list = ['is_connecting_to_pep', 'is_connecting_to_cdr',
 
 def return_property_by_islarge(temp, prop):
     if prop not in ['distance_value', 'num_bonds']:
+        temp = temp[['pdbid', 'residue', 'is_large_atten', prop, ]].copy()
         temp = temp.groupby(['pdbid', 'residue', ]).max().reset_index()
         df = pd.crosstab(temp.is_large_atten, temp[prop], margins=False, )
         
@@ -36,12 +37,13 @@ def return_property_by_islarge(temp, prop):
         if True not in df.columns:
             df[True] = [0 for _ in range(len(df))]
         if (len(df.columns)!=2) or (len(df.index)!=2):
-            return [np.nan, (df[True] / df.sum(axis=1)).loc[False]]
+            return [np.nan, np.nan]
             
         # df_margin = pd.crosstab(temp.is_large_atten, temp[prop], margins=True, normalize=True)
         # oddsr, p = stats.fisher_exact(table=df.to_numpy(), alternative='two-sided')
         return (df[True] / df.sum(axis=1)).sort_index(ascending=False).values
     else:
+        temp = temp[['pdbid', 'residue', 'is_large_atten', 'peptide_min','distance_value', 'num_bonds', 'digit4_is_in_edge' ]].copy()
         temp = pd.concat([
             temp.groupby(['residue', ]).max()[['is_large_atten','digit4_is_in_edge']],
             temp.groupby(['residue', ]).min()[['distance_value','peptide_min',]],
@@ -60,16 +62,37 @@ def main(args):
 
     df_distance = pd.read_parquet(args.residue_distances)
     df_explained = pd.read_parquet(args.input_filepath)
-    df_bondinfo = pd.read_parquet(f"../data/{args.datetimehash}__df_bondinfo.parquet")
+    
+    df_explained = df_explained[df_explained.proba>0.5]
+    if 'pdbid' not in df_explained.columns and 'pdbid_x' in df_explained.columns:
+        df_explained['pdbid'] = df_explained['pdbid_x']
+    
+    temp = df_explained.drop_duplicates(subset='pdbid').copy()
+    print("pos pred value_counts = ", (temp.proba>0.5).value_counts())
+    print('average precision = ', average_precision_score(temp.proba>0, temp.proba))
+    print('precision = ', precision_score(temp.proba>0, temp.proba>0.5))
 
+    df_bondinfo = pd.read_parquet(f"../data/{args.datetimehash}__df_bondinfo.parquet")
     df_seq = pd.read_parquet(args.seqfile)
+
+    # Print # of unique PDBs
+    print('df_distance.pdbid.nunique() = ',df_distance.pdbid.nunique())
+    print('df_explained.pdbid.nunique() = ',df_explained.pdbid.nunique())
+    print('df_bondinfo.pdbid.nunique() = ',df_bondinfo.pdbid.nunique())
+    print('df_seq.pdbid.nunique() = ',df_seq.pdbid.nunique())
+
+    if 'tcr_pep_combined' not in df_seq.columns and 'tcr_a' in df_seq.columns:
+        df_seq['tcr_pep_combined'] = df_seq['tcr_a'] + ':' + df_seq['tcr_b']  + ':' + df_seq['peptide']
+
+    if 'tcr_pep_combined' not in df_seq.columns and 'tcra' in df_seq.columns:
+        df_seq['tcr_pep_combined'] = df_seq['tcra'] + ':' + df_seq['tcrb']  + ':' + df_seq['peptide']
 
 
     pdbs_seqs = set(df_seq.pdbid.unique().tolist())
     pdbs_explained = set(df_explained.pdbid.unique().tolist())
     pdbs_bondinfo = set(df_bondinfo.pdbid.unique().tolist())
-
     pdbs_intersection = list(pdbs_seqs & pdbs_explained & pdbs_bondinfo)
+    print('len(pdbs_intersection) = ',len(pdbs_intersection))
 
 
     df_seq = df_seq[df_seq.pdbid.isin(pdbs_intersection)]
@@ -90,8 +113,8 @@ def main(args):
             on=['pdbid','tcr', 'value'],
             ).rename(columns={'value':'distance_value', 'peptide':'peptide_min', 'tcr':'residue'})
 
-
-    df_tcr_allhead = pd.merge(df_explained[df_explained.type=='tcr'],
+    print(df_explained.type.unique())
+    df_tcr_allhead = pd.merge(df_explained[(df_explained.type=='tcr') | (df_explained.type=='alpha') | (df_explained.type=='beta')],
                             df_bondinfo.query('is_tcr==True'), 
                             how='left', 
                             on=['pdbid', 'residue'], 
@@ -99,8 +122,6 @@ def main(args):
 
 
     df_tcr_allhead = pd.merge(df_tcr_allhead, distance_tcr_side, on=['pdbid','residue'], how='left')
-
-
 
     print('len(unique_pdbs_no_seq_dup) = ',len(unique_pdbs_no_seq_dup))
 
@@ -121,9 +142,8 @@ def main(args):
                 else:
                     temp['is_large_atten'] = temp[f'head_{hhh}'].values
                 vals.append(return_property_by_islarge(temp, prop))
-            
             vals = np.array(vals)
-            
+
             df_minimum = pd.DataFrame(vals, index=df_tcr_allhead.pdbid.unique(), columns=[f'Large {prop}', f'Small {prop}'])
             
             ttest_result = stats.ttest_rel(vals[:,0], vals[:,1], nan_policy='omit')
@@ -164,7 +184,34 @@ def main(args):
 
 if __name__ == "__main__":
     """
-    python stats_test.py 
+    python stats_test.py --seqfile ../data/pdb_complex_sequences.parquet \
+        --checkpointsjson ../hpo_params/checkpoints.json \
+            --input_filepath ../data/pdb_complex_sequences_entire_crossatten__explained.parquet \
+                --pdblist ../data/pdblist.csv \
+                    --residue_distances ./../data/20230817_060411__residue_distances.parquet \
+                        --datetimehash 20230817_060411
+
+    python stats_test.py --seqfile ../data/pdb_complex_sequencesV2.parquet \
+        --checkpointsjson ../hpo_params/checkpoints.json \
+            --input_filepath ../data/pdb_complex_sequencesV2_entire_self__explained.parquet \
+                --pdblist ../data/pdblist.csv \
+                    --residue_distances ./../data/20230817_060411__residue_distances.parquet \
+                        --datetimehash 20230817_060411
+
+    python stats_test.py --seqfile ../data/pdb_complex_sequencesV2.parquet \
+        --checkpointsjson ../hpo_params/checkpoints.json \
+            --input_filepath ../data/pdb_complex_sequencesV2_entire_cross_newemb__explained.parquet \
+                --pdblist ../data/pdblist.csv \
+                    --residue_distances ./../data/20230817_060411__residue_distances.parquet \
+                        --datetimehash 20230817_060411
+
+    python stats_test.py --seqfile ../data/pdb_complex_sequencesV2.parquet \
+        --checkpointsjson ../hpo_params/checkpoints.json \
+            --input_filepath ../data/pdb_complex_sequencesV2_entire_self_newemb__explained.parquet \
+                --pdblist ../data/pdblist.csv \
+                    --residue_distances ./../data/20230817_060411__residue_distances.parquet \
+                        --datetimehash 20230817_060411
+
     """
 
     import argparse
@@ -185,6 +232,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     args.residue_distances = f"./../data/{args.datetimehash}__residue_distances.parquet"
-    args.output_statspath = '../data/{}__stats_test_output.csv'.format(args.datetimehash)
+    args.output_statspath = args.input_filepath.replace(".parquet", f"__stats{args.datetimehash}.csv")
     main(args)
 
