@@ -134,7 +134,7 @@ def main(args):
         df_by_prop = []
         for prop in prop_list:
             vals = []
-            for ppp in df_tcr_allhead.pdbid.unique():     
+            for ppp in df_tcr_allhead.pdbid.unique():
                 temp = df_tcr_allhead.query('pdbid==@ppp').copy()
                 temp['tcr'] = temp['residue'].values
                 if hhh==4:
@@ -179,7 +179,7 @@ def main(args):
     df[' '].fillna(' ')
     df.to_csv(args.output_statspath, index=False)
     table_by_pdb = pd.concat(table_by_pdb, axis=0)
-    table_by_pdb.to_csv(args.output_statspath.replace('.csv', '__by_pdbid.csv'), index=False)
+    table_by_pdb.reset_index().to_csv(args.output_statspath.replace('.csv', '__by_pdbid.csv'), index=False)
 
 
 if __name__ == "__main__":

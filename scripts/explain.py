@@ -308,7 +308,7 @@ def main(ckptpath, dt, output_filepath, args):
 
     # merge on tcra, tcrb, peptide
     print(dfinput.shape, dfinput.head())
-    df = pd.merge(df, dfinput[["pdbid", "tcra", "tcrb", "peptide", "proba"]], on=["tcra", "tcrb", "peptide"], how="left")
+    df = pd.merge(df, dfinput[["pdbid", "tcra", "tcrb", "peptide", "proba"]], on=["pdbid", "tcra", "tcrb", "peptide"], how="left")
 
     print(df.sample(10))
     df.to_parquet(output_filepath)
