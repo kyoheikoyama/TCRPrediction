@@ -155,7 +155,7 @@ def main(args):
     optim = torch.optim.Adam(model.parameters(), lr=lr)
 
     # Loss
-    loss_fn = torch.nn.CrossEntropyLoss(weight=torch.tensor([1.0, 15.0], device=device))
+    loss_fn = torch.nn.CrossEntropyLoss(weight=torch.tensor([1.0, 6.0], device=device))
 
     trainer = create_supervised_trainer(
         model=model,
@@ -194,8 +194,6 @@ def main(args):
         text = f"Train Results - Epoch: {trainer.state.epoch}. "
         for k, v in metrics.items():
             text += f"Avg {k}: {v:.3f} "
-            if withcomet:
-                experiment.log_metric(f"train:{k}", v, epoch=trainer.state.epoch)
         print(text)
 
     @trainer.on(Events.EPOCH_COMPLETED)
@@ -206,8 +204,6 @@ def main(args):
         GLOBAL_Validation_score_on_each_epoch.append(metrics[VALID_LOG_KEY])
         for k, v in metrics.items():
             text += f"Avg {k}: {v:.3f} "
-            if withcomet:
-                experiment.log_metric(f"valid:{k}", v, epoch=trainer.state.epoch)
         print(text)
 
     @trainer.on(Events.EPOCH_COMPLETED)
@@ -217,9 +213,12 @@ def main(args):
         text = f"Test Results - Epoch: {trainer.state.epoch}. "
         for k, v in metrics.items():
             text += f"Avg {k}: {v:.4f} "
-            if withcomet:
-                experiment.log_metric(f"test:{k}", v, epoch=trainer.state.epoch)
         print(text)
+    
+    # def apply_non_negative_constraint(engine):
+    #     for param in model.parameters():
+    #         param.data.clamp_(min=0)  # Ensure non-negative values
+    # trainer.add_event_handler(Events.ITERATION_COMPLETED, apply_non_negative_constraint)
 
     evaluator.add_event_handler(
         Events.COMPLETED,
@@ -267,7 +266,6 @@ def main(args):
     to_load = {"model": model, "optimizer": optim, "trainer": trainer}
 
     ## Resume engine’s run from a state. User can load a state_dict and run engine starting from the state
-    print("best score: ", max(GLOBAL_Validation_score_on_each_epoch))
     if LOGKEY_MINBETTER:
         best_epoch = 1 + GLOBAL_Validation_score_on_each_epoch.index(
             min(GLOBAL_Validation_score_on_each_epoch)

@@ -37,12 +37,6 @@ python main.py --params best.json --dataset mcpas --modeltype cross
 
 ##  20230703 attention on all
 
-#### ../../hhyylog/20230703_185102_k-1_datasettest.parquet
-python main.py --params best.json --dataset vdjdbno10x --modeltype self_on_all
-
-#### ../../hhyylog/20230703_215045_k-1_datasettest.parquet
-python main.py --params best.json --dataset mcpas --modeltype self_on_all
-
 #### /media/kyohei/forAI/tcrpred/hhyylog/20230704_221459_k-1_datasettest.parquet
 python main.py --params best.json --dataset allwithtest --modeltype cross 
 
@@ -63,6 +57,44 @@ python main.py --params best.json --dataset all --modeltype cross
 ### /media/kyohei/forAI/tcrpred/hhyylog/20230823_202306_k-1_datasettest.parquet
 python main.py --params best.json --dataset all --modeltype self_on_all
 
+## experiment for neurips
+
+#### /media/kyohei/forAI/tcrpred/hhyylog/20230825_210148_k-1_datasettest.parquet
+python main.py --params best.json --dataset vdjdbno10x --modeltype self_on_all
+  - Test Results - Epoch: 26. Avg accuracy: 0.8676 Avg xent: 0.3589 Avg roc_auc: 0.9499 Avg pr_auc_on_one: 0.7539 Avg pr_auc_on_zero: 0.9908
+
+#### /media/kyohei/forAI/tcrpred/hhyylog/20230825_205356_k-1_datasettest.parquet
+python main.py --params best.json --dataset mcpas --modeltype self_on_all
+  - Test Results - Epoch: 26. Avg accuracy: 0.8638 Avg xent: 0.7556 Avg roc_auc: 0.9234 Avg pr_auc_on_one: 0.6299 Avg pr_auc_on_zero: 0.9857 
+
+## experiment for neurips
+#### /media/kyohei/forAI/tcrpred/hhyylog/20230826_031920_k-1_datasettest.parquet
+python main.py --params best.json --dataset vdjdbno10x --modeltype cross
+  - Test Results - Epoch: 35. Avg accuracy: 0.9057 Avg xent: 0.6189 Avg roc_auc: 0.9459 Avg pr_auc_on_one: 0.7760 Avg pr_auc_on_zero: 0.9890  
+
+#### /media/kyohei/forAI/tcrpred/hhyylog/20230826_032916_k-1_datasettest.parquet
+python main.py --params best.json --dataset vdjdbno10x --modeltype self_on_all
+  - Test Results - Epoch: 27. Avg accuracy: 0.9077 Avg xent: 0.5786 Avg roc_auc: 0.9513 Avg pr_auc_on_one: 0.7690 Avg pr_auc_on_zero: 0.9906 
+
+## /media/kyohei/forAI/tcrpred/hhyylog/20230826_033421_k-1_datasettest.parquet
+python main.py --params best.json --dataset mcpas --modeltype cross
+  - Test Results - Epoch: 23. Avg accuracy: 0.8738 Avg xent: 0.6872 Avg roc_auc: 0.9187 Avg pr_auc_on_one: 0.6349 Avg pr_auc_on_zero: 0.9845 
+
+## /media/kyohei/forAI/tcrpred/hhyylog/20230826_033957_k-1_datasettest.parquet
+python main.py --params best.json --dataset mcpas --modeltype self_on_all
+  - Test Results - Epoch: 31. Avg accuracy: 0.8824 Avg xent: 1.0388 Avg roc_auc: 0.9206 Avg pr_auc_on_one: 0.6123 Avg pr_auc_on_zero: 0.9852 
+
+## /media/kyohei/forAI/tcrpred/hhyylog/20230826_035401_k-1_datasettest.parquet
+python main.py --params best.json --dataset entire --modeltype cross
+  - Test Results - Epoch: 47. Avg accuracy: 0.7253 Avg xent: 2.7443 Avg roc_auc: 0.5519 Avg pr_auc_on_one: 0.2052 Avg pr_auc_on_zero: 0.8788
+
+
+## /media/kyohei/forAI/tcrpred/hhyylog/20230826_044148_k-1_datasettest.parquet
+python main.py --params best.json --dataset entire --modeltype self_on_all
+  - Test Results - Epoch: 32. Avg accuracy: 0.7141 Avg xent: 2.5865 Avg roc_auc: 0.5357 Avg pr_auc_on_one: 0.1889 Avg pr_auc_on_zero: 0.8698 
+
+
+
 ## Prediction
 - prediction.py
   - `python predict.py --model_key entire_crossatten --checkpointsjson ../hpo_params/checkpoints.json --input_filepath ../data/recent_data_test.parquet`
@@ -70,6 +102,10 @@ python main.py --params best.json --dataset all --modeltype self_on_all
   - python predict.py --model_key entire_self_newemb --checkpointsjson ../hpo_params/checkpoints.json --input_filepath ../data/recent_data_test.parquet
   - python predict.py --model_key entire_cross_newemb --checkpointsjson ../hpo_params/checkpoints.json --input_filepath ../data/recent_data_test.parquet  # 
   - python predict.py --model_key entire_cross_stoppingByAP --checkpointsjson ../hpo_params/checkpoints.json --input_filepath ../data/recent_data_test.parquet 
+
+## Explain
+  - python explain.py --model_key entire_cross_newemb --checkpointsjson ../hpo_params/checkpoints.json --input_filepath ../data/pdb_complex_sequencesV2.parquet
+  - python explain.py --model_key entire_self_newemb --checkpointsjson ../hpo_params/checkpoints.json --input_filepath ../data/pdb_complex_sequencesV2.parquet
 
 
 # How to annotate pdb

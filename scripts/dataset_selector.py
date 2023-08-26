@@ -68,7 +68,7 @@ def dataset_select(name, spbtarget=None, kfold=0):
         n_tok = 29  # NUM_VOCAB
         n_pos1 = 52  # MAX_LEN_AB (sum of maxlens of a and b)
         n_pos2 = 28  # MAX_LEN_Epitope
-        n_seg = 3
+        n_seg = 5
         if kfold==-1 or kfold=="-1":
             return (
                 df_all,
@@ -115,7 +115,7 @@ def dataset_select(name, spbtarget=None, kfold=0):
         n_tok = 29  # NUM_VOCAB
         n_pos1 = 62  # MAX_LEN_AB
         n_pos2 = 21  # MAX_LEN_Epitope
-        n_seg = 3
+        n_seg = 5
         if kfold==-1 or kfold=="-1":
             return (
                 df_all,
@@ -189,6 +189,21 @@ def dataset_select(name, spbtarget=None, kfold=0):
         n_pos1 = 62  # MAX_LEN_AB
         n_pos2 = 26  # MAX_LEN_Epitope
         n_seg = 5
+    elif name == "entire":
+        p_list = [
+            f"{pathlib.Path(__file__).parent.absolute()}/../external_data/ERGO-II/Samples/vdjdb_train_samples.pickle",
+            f"{pathlib.Path(__file__).parent.absolute()}/../external_data/ERGO-II/Samples/mcpas_train_samples.pickle",
+            f"{pathlib.Path(__file__).parent.absolute()}/../external_data/ERGO-II/Samples/vdjdb_test_samples.pickle",
+            f"{pathlib.Path(__file__).parent.absolute()}/../external_data/ERGO-II/Samples/mcpas_test_samples.pickle",
+        ]
+        df_all = get_df_from_path(p_list).drop_duplicates(subset=['tcra','tcrb','peptide',])
+        dataset_train, dataset_valid = MCPASDataset(df_all), MCPASDataset(df_all)
+        df_test = pd.read_parquet("../data/recent_data_test.parquet")
+        dataset_test = MCPASDataset(df_test)
+        n_tok = 29  # NUM_VOCAB
+        n_pos1 = 62  # MAX_LEN_AB
+        n_pos2 = 26  # MAX_LEN_Epitope
+        n_seg = 5
     elif name == "allwithtest":
         df_train = pd.read_parquet("../data/train_allDataTrainedModel.parquet")
         df_valid = pd.read_parquet("../data/valid_allDataTrainedModel.parquet")
@@ -197,7 +212,7 @@ def dataset_select(name, spbtarget=None, kfold=0):
         n_tok = 29  # NUM_VOCAB
         n_pos1 = 62  # MAX_LEN_AB
         n_pos2 = 26  # MAX_LEN_Epitope
-        n_seg = 3        
+        n_seg = 5
         dataset_valid = dataset_train
         df_all = pd.concat([df_train, df_valid])
 
