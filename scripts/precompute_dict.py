@@ -6,6 +6,7 @@ from Bio.PDB.PDBParser import PDBParser
 import warnings
 warnings.simplefilter("ignore")
 import argparse
+from datetime import datetime
 
 def tcr_a_or_b(row):
     if row['chain1_type'] == 'alpha':
@@ -44,11 +45,13 @@ def get_a_b_e_chains_from_structure(structure):
     ALPHA_CHAIN_NAME, BETA_CHAIN_NAME, EPITOPE_CHAIN_NAME = None, None, None
     for k, v in structure.header['compound'].items():
         if any([t in str(v).lower() for t in TCR_QUERIES]):
-            if ('alpha' in str(v['molecule'])) and any([t in str(v['molecule']).lower() for t in TCR_QUERIES]):
+            if ('alpha' in str(v['molecule']).lower()) and any([t in str(v['molecule']).lower() for t in TCR_QUERIES]):
                 ALPHA_CHAIN_NAME = v['chain'].upper()
-            if ('beta' in str(v['molecule'])) and any([t in str(v['molecule']).lower() for t in TCR_QUERIES]):
+            if ('beta' in str(v['molecule']).lower()) and any([t in str(v['molecule']).lower() for t in TCR_QUERIES]):
                 BETA_CHAIN_NAME = v['chain'].upper()
-        if v['molecule'].count('-') > 3 or 'peptide' in str(v['molecule']) or 'fragment' in str(v['molecule']) or 'antigen' in str(v['molecule']):
+        if v['molecule'].count('-') > 3 or 'peptide' in str(v['molecule']).lower() or\
+         'fragment' in str(v['molecule']).lower() or 'antigen' in str(v['molecule']).lower() or\
+            'epitope' in str(v['molecule']).lower():
             chain = v['chain'].upper()
             if len(list(structure[0][chain[0]].get_residues())) < 30:
                 EPITOPE_CHAIN_NAME = chain
@@ -90,8 +93,8 @@ def get_cdrs_from_anarci(pdbid, residues_chain_alpha, residues_chain_beta):
     
     cdr_beta_no_hyphen = cdr_beta.replace('-','')
     cdr_alpha_no_hyphen = cdr_alpha.replace('-','')
-    cdr_start_pos_alpha = seq_alpha.find(cdr_alpha_no_hyphen)
-    cdr_start_pos_beta = seq_beta.find(cdr_beta_no_hyphen)
+    cdr_start_pos_alpha = seq_alpha.find(cdr_alpha_no_hyphen[:5])
+    cdr_start_pos_beta = seq_beta.find(cdr_beta_no_hyphen[:5])
     residues_chain_cdr_alpha = residues_chain_alpha[cdr_start_pos_alpha:cdr_start_pos_alpha+len(cdr_alpha_no_hyphen)]
     residues_chain_cdr_beta = residues_chain_beta[cdr_start_pos_beta:cdr_start_pos_beta+len(cdr_beta_no_hyphen)]
     return residues_chain_cdr_alpha, residues_chain_cdr_beta
@@ -137,7 +140,7 @@ def main(args):
 
     print('len(df_sceptre_result) =', len(df_sceptre_result))
     print('len(PDBENTRIES) =', len(PDBENTRIES), PDBENTRIES)
-    structs = [get_structure_from_id(p) for p in PDBENTRIES]
+    structs = [get_structure_from_id(p) for p in tqdm(PDBENTRIES)]
 
     DICT_PDBID_2_STRUCTURE = {pdbid:s for pdbid, s in zip(PDBENTRIES, structs)}
 
@@ -184,13 +187,19 @@ def main(args):
 
     print('len(DICT_PDBID_2_CDRS) =', len(DICT_PDBID_2_CDRS), sorted(DICT_PDBID_2_CDRS.keys()))
     assert '5TEZ' in DICT_PDBID_2_CDRS, '5TEZ is not in DICT_PDBID_2_CDRS'
-    assert '2YPL' in DICT_PDBID_2_CDRS, '2YPL is not in DICT_PDBID_2_CDRS'
+    
+    assertion_list = []
+    for key in DICT_PDBID_2_CDRS.keys():
+        if 0 in [len(DICT_PDBID_2_CDRS[key][0]), len(DICT_PDBID_2_CDRS[key][1]), len(DICT_PDBID_2_CDRS[key][2])]:
+            print("zero-lengths", key, len(DICT_PDBID_2_CDRS[key][0]), len(DICT_PDBID_2_CDRS[key][1]), len(DICT_PDBID_2_CDRS[key][2]))
+            assertion_list.append(key)
+    assert len(assertion_list) == 0, f'beta chain of ({assertion_list}) is not in DICT_PDBID_2_CDRS'
 
-    from datetime import datetime
     datetimehash = datetime.now().strftime('%Y%m%d_%H%M%S')
     pickle.dump(DICT_PDBID_2_CDRS, open(f"../data/{datetimehash}__DICT_PDBID_2_CDRS.pickle", "wb"))
     pickle.dump(DICT_PDBID_2_RESIDUES, open(f"../data/{datetimehash}__DICT_PDBID_2_RESIDUES.pickle", "wb"))
-
+    print('saved to', f"../data/{datetimehash}__DICT_PDBID_2_CDRS.pickle")
+    print('saved to', f"../data/{datetimehash}__DICT_PDBID_2_RESIDUES.pickle")
 
 if __name__ == '__main__':
     ## example usage:

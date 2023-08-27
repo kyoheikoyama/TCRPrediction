@@ -107,6 +107,15 @@ python main.py --params best.json --dataset entire --modeltype self_on_all
   - python explain.py --model_key entire_cross_newemb --checkpointsjson ../hpo_params/checkpoints.json --input_filepath ../data/pdb_complex_sequencesV2.parquet
   - python explain.py --model_key entire_self_newemb --checkpointsjson ../hpo_params/checkpoints.json --input_filepath ../data/pdb_complex_sequencesV2.parquet
 
+## stats_test
+  - python stats_test.py --seqfile ../data/pdb_complex_sequencesV2.parquet \
+        --checkpointsjson ../hpo_params/checkpoints.json \
+            --input_filepath ../data/pdb_complex_sequencesV2_entire_cross_newemb__explained.parquet \
+                --pdblist ../data/pdblist.csv \
+                    --residue_distances ./../data/20230828_015709__residue_distances.parquet \
+                        --datetimehash 20230828_015709
+  - python mutation_analysis.py
+
 
 # How to annotate pdb
 
@@ -114,15 +123,15 @@ python main.py --params best.json --dataset entire --modeltype self_on_all
   - python precompute_dict.py --pdbdir ../analysis/zipdata/pdb --sceptre_result_csv ../data/sceptre_result_v2.csv
 
 - calc_distances_pdb.py
-  - python calc_distances_pdb.py --cdrpath ../data/20230817_060411__DICT_PDBID_2_CDRS.pickle
+  - python calc_distances_pdb.py --cdrpath ../data/20230828_015709__DICT_PDBID_2_CDRS.pickle
 
 - run_ligplot.py 
-  - python run_ligplot.py --dict_pdbid_2_cdrs ../data/20230817_060411__DICT_PDBID_2_CDRS.pickle 
+  - python run_ligplot.py --dict_pdbid_2_cdrs ../data/20230828_015709__DICT_PDBID_2_CDRS.pickle 
 
 - create_pdb_info.py 
   - `python create_pdb_info.py \
     --dict_pdbid_2_chainnames ../data/DICT_PDBID_2_CHAINNAMES.json \
-    --dict_pdbid_2_residues ../data/20230817_060411__DICT_PDBID_2_RESIDUES.pickle \
-    --dict_pdbid_2_cdrs ../data/20230817_060411__DICT_PDBID_2_CDRS.pickle \
-    --residue_distances ../data/20230817_060411__residue_distances.parquet`
+    --dict_pdbid_2_residues ../data/20230828_015709__DICT_PDBID_2_RESIDUES.pickle \
+    --dict_pdbid_2_cdrs ../data/20230828_015709__DICT_PDBID_2_CDRS.pickle \
+    --residue_distances ../data/20230828_015709__residue_distances.parquet`
 
