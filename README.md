@@ -106,6 +106,7 @@ python main.py --params best.json --dataset entire --modeltype self_on_all
 ## Explain
   - python explain.py --model_key entire_cross_newemb --checkpointsjson ../hpo_params/checkpoints.json --input_filepath ../data/pdb_complex_sequencesV2.parquet
   - python explain.py --model_key entire_self_newemb --checkpointsjson ../hpo_params/checkpoints.json --input_filepath ../data/pdb_complex_sequencesV2.parquet
+  - python explain.py --model_key entire_cross_newemb --checkpointsjson ../hpo_params/checkpoints.json --input_filepath ../data/mutation_study.parquet
 
 ## stats_test
   - python stats_test.py --seqfile ../data/pdb_complex_sequencesV2.parquet \
