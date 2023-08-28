@@ -292,6 +292,7 @@ def main(ckptpath, dt, output_filepath, args):
             temp_pep["peptide"] = peptide
             temp_pep["tcra"] = cdr_alpha
             temp_pep["tcrb"] = cdr_beta
+            temp_tcr = pd.concat([temp_tcr, temp_pep])
 
         temp_tcr["tcra"] = cdr_alpha
         temp_tcr["tcrb"] = cdr_beta
