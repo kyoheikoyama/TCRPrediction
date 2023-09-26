@@ -188,7 +188,7 @@ def main(args):
         left_on=["pdbid", "digit4"],
         right_on=["pdbid", "digit4"],
         how="left",
-    )
+    ).reset_index()
 
     df_bondinfo["to_res_list"] = df_bondinfo.to_res_list.apply(
         lambda xlis: [] if not isinstance(xlis, list) else xlis
@@ -386,8 +386,23 @@ def main(args):
             print('Error in pdbid=', p)
             df_bondinfo.loc[[i], "digit4_is_in_edge"] = None
 
+    ## Add peptide side info
+    df_bondinfo["pepres__is_in_edge"] = False
+    for i, row in tqdm(df_bondinfo.iterrows()):
+        if row.is_tcr == True:continue
+        PEP__EDGENUM = 3
+        p = row.pdbid
+        pep__residue_list = df_bondinfo.query("is_tcr==False and pdbid==@p")["residue"].tolist()
+        pos_all = (
+            pd.Series(pep__residue_list).str.split("_").apply(lambda x: x[1]).values.astype(int)
+        )
+        beginnings_endings = list(range(PEP__EDGENUM)) + pos_all[-PEP__EDGENUM:].tolist()
+        df_bondinfo.loc[[i], "pepres__is_in_edge"] = (
+            int(row.residue.split("_")[1]) in beginnings_endings
+        )
+        # print('Error in pdbid=', p)
+        # df_bondinfo.loc[[i], "pepres__is_in_edge"] = None
 
-    
     print(df_bondinfo.head(3))
 
     df_bondinfo.to_parquet(f"../data/{datetime}__df_bondinfo.parquet")

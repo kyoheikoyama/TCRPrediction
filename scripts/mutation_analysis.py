@@ -1,6 +1,6 @@
 import pandas as pd
 
-PropertyCOLS = ['head_all','num_bonds', 'is_connecting_to_cdr', 'is_connecting_to_pep', 'is_connecting_to_tcr',
+PropertyCOLS = ['head_0','head_1','head_2','head_3','head_all','num_bonds', 'is_connecting_to_cdr', 'is_connecting_to_pep', 'is_connecting_to_tcr',
                'is_connecting_to_notCDR_tcr', 'is_connecting_to_ownchain_tcr',
                'is_connecting_to_ownchain_cdr', 'is_connecting_to_opposite_chain_tcr',
                'is_connecting_to_opposite_chain_cdr', ]
@@ -21,10 +21,11 @@ def main(args):
     for col in PropertyCOLS:
         if col == 'num_bonds':
             bondinfo[col] = bondinfo[col].astype(str)
-        if col == 'head_all':
+        if 'head' in col:
             df[col] = df[col].astype(bool)
             df[col] = df[col].map({True:'T', False:'F'})
             continue
+        
         bondinfo[col] = bondinfo[col].astype(bool)
         bondinfo[col] = bondinfo[col].map({True:'T', False:'F'})
 
@@ -66,6 +67,9 @@ def main(args):
 
 
 if __name__ == "__main__":
+    """
+    python scripts/mutation_analysis.py --bondinfo ../data/20230828_015709__df_bondinfo.parquet --explained ../data/mutation_study_entire_cross_newemb__explained.parquet
+    """
     import argparse
 
     parser = argparse.ArgumentParser()
@@ -73,9 +77,10 @@ if __name__ == "__main__":
     parser.add_argument("--explained", type=str, default="../data/mutation_study_entire_cross_newemb__explained.parquet")
 
     # save file name
-    parser.add_argument("--output", type=str, default="../data/mutation_study_result.parquet")
+    # parser.add_argument("--output", type=str, default="../data/mutation_study_result.parquet")
 
     args = parser.parse_args()
+    args.output = args.explained.replace('../data/', '../data/analysis_result_of__')
     df = main(args)
 
     df.to_parquet(args.output)

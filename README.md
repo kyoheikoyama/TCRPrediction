@@ -111,11 +111,15 @@ python main.py --params best.json --dataset entire --modeltype self_on_all
 ## stats_test
   - python stats_test.py --seqfile ../data/pdb_complex_sequencesV2.parquet \
         --checkpointsjson ../hpo_params/checkpoints.json \
-            --input_filepath ../data/pdb_complex_sequencesV2_entire_cross_newemb__explained.parquet \
-                --pdblist ../data/pdblist.csv \
-                    --residue_distances ./../data/20230828_015709__residue_distances.parquet \
-                        --datetimehash 20230828_015709
-  - python mutation_analysis.py
+            --input_filepath ../data/pdb_complex_sequencesV2_entire_cross_newemb__explained.parquet --datetimehash 20230828_015709
+
+    python stats_test.py --seqfile ../data/pdb_complex_sequencesV2.parquet \
+        --checkpointsjson ../hpo_params/checkpoints.json \
+            --input_filepath ../data/pdb_complex_sequencesV2_entire_self_newemb__explained.parquet --datetimehash 20230828_015709
+            
+  - python mutation_analysis.py --bondinfo ../data/20230828_015709__df_bondinfo.parquet --explained ../data/mutation_study_entire_cross_newemb__explained.parquet
+
+  - python mutation_analysis.py --bondinfo ../data/20230828_015709__df_bondinfo.parquet --explained ../data/mutation_study_entire_self_newemb__explained.parquet
 
 
 # How to annotate pdb

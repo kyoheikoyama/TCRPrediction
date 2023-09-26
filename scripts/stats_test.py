@@ -20,12 +20,43 @@ prop_list = ['is_connecting_to_pep', 'is_connecting_to_cdr',
              'is_connecting_to_opposite_chain_tcr', 'is_connecting_to_opposite_chain_cdr',
              'is_connecting_to_tcr', 'is_connecting_to_notCDR_tcr',
              'digit4_is_in_edge', 'distance_value', 'num_bonds',
+             'pepres__is_in_edge', 'pepres__distance_value', 'pepres__num_bonds'
             ]
 
+def take_not_zero_len_seq(df):
+    df = df[df['tcrb'].apply(len)!=0]
+    df = df[df['tcra'].apply(len)!=0]
+    df = df[df['peptide'].apply(len)!=0]
+    return df
 
 
 def return_property_by_islarge(temp, prop):
-    if prop not in ['distance_value', 'num_bonds']:
+    if prop in ['distance_value', 'num_bonds']:
+        temp = temp[['pdbid', 'residue', 'is_large_atten', 'peptide_min','distance_value', 'num_bonds', 'digit4_is_in_edge']].copy()
+        temp = pd.concat([
+            temp.groupby(['residue', ]).max()[['is_large_atten','digit4_is_in_edge']],
+            temp.groupby(['residue', ]).min()[['distance_value','peptide_min',]],
+            temp.groupby(['residue', ]).mean()[['num_bonds',]],
+        ], axis=1).reset_index()
+        temp_mean = temp.groupby('is_large_atten').mean()[prop]
+        if len(temp_mean)==1:
+            return  [np.nan, temp_mean.loc[False]]
+        return [temp_mean.loc[True], temp_mean.loc[False]]
+    elif prop in ['pepres__distance_value', 'pepres__num_bonds']:
+        temp = temp[['pdbid', 'residue', 'is_large_atten','pepres__distance_value', 'pepres__num_bonds', 'pepres__is_in_edge' ]].copy()
+        temp = pd.concat([
+            temp.groupby(['residue', ]).max()[['is_large_atten']],
+            temp.groupby(['residue', ]).min()[['pepres__distance_value', ]],
+            temp.groupby(['residue', ]).mean()[['pepres__num_bonds',]],
+        ], axis=1).reset_index()
+        temp_mean = temp.groupby('is_large_atten').mean()[prop]
+        if len(temp_mean)==1:
+            try:
+                return  [np.nan, temp_mean.loc[False]]
+            except:
+                return  [temp_mean.loc[True], np.nan]
+        return [temp_mean.loc[True], temp_mean.loc[False]]
+    else:
         temp = temp[['pdbid', 'residue', 'is_large_atten', prop, ]].copy()
         temp = temp.groupby(['pdbid', 'residue', ]).max().reset_index()
         df = pd.crosstab(temp.is_large_atten, temp[prop], margins=False, )
@@ -42,26 +73,12 @@ def return_property_by_islarge(temp, prop):
         # df_margin = pd.crosstab(temp.is_large_atten, temp[prop], margins=True, normalize=True)
         # oddsr, p = stats.fisher_exact(table=df.to_numpy(), alternative='two-sided')
         return (df[True] / df.sum(axis=1)).sort_index(ascending=False).values
-    else:
-        temp = temp[['pdbid', 'residue', 'is_large_atten', 'peptide_min','distance_value', 'num_bonds', 'digit4_is_in_edge' ]].copy()
-        temp = pd.concat([
-            temp.groupby(['residue', ]).max()[['is_large_atten','digit4_is_in_edge']],
-            temp.groupby(['residue', ]).min()[['distance_value','peptide_min',]],
-            temp.groupby(['residue', ]).mean()[['num_bonds',]],
-        ], axis=1).reset_index()
-
-        temp_mean = temp.groupby('is_large_atten').mean()[prop]
-        if len(temp_mean)==1:
-            return  [np.nan, temp_mean.loc[False]]
-        return [temp_mean.loc[True], temp_mean.loc[False]]
 
 
 def main(args):
-    
-    PDBENTRIES = pd.read_csv(args.pdblist)["pdbid"].unique().tolist()
-
     df_distance = pd.read_parquet(args.residue_distances)
     df_explained = pd.read_parquet(args.input_filepath)
+    df_explained = take_not_zero_len_seq(df_explained).copy()
     
     if 'pdbid' not in df_explained.columns and 'pdbid_x' in df_explained.columns:
         df_explained['pdbid'] = df_explained['pdbid_x']
@@ -121,11 +138,22 @@ def main(args):
     df_tcr_allhead = pd.merge(df_explained[(df_explained.type=='tcr') | (df_explained.type=='alpha') | (df_explained.type=='beta')],
                             df_bondinfo.query('is_tcr==True'), 
                             how='left', 
-                            on=['pdbid', 'residue'], 
+                            on=['pdbid', 'residue'], suffixes=['','__x']
                             )
-
-
     df_tcr_allhead = pd.merge(df_tcr_allhead, distance_tcr_side, on=['pdbid','residue'], how='left')
+    
+    distance_pep_side = pd.merge(df_distance[['pdbid','peptide','value']].groupby(['pdbid','peptide'], as_index=False).min(), 
+        df_distance, 
+        on=['pdbid','peptide', 'value'],
+        ).rename(columns={'value':'pepres__distance_value', 'tcr':'tcr_min', 'peptide':'residue'})
+
+    df_pep_allhead = pd.merge(df_explained[(df_explained.type=='peptide')],
+                            df_bondinfo.query('is_tcr==False'),
+                            how='left', 
+                            on=['pdbid', 'residue'], suffixes=['','__x']
+                            )
+    df_pep_allhead = pd.merge(df_pep_allhead, distance_pep_side, on=['pdbid','residue'], how='left', suffixes=['','__x'])
+    df_pep_allhead = df_pep_allhead.rename(columns={'num_bonds':'pepres__num_bonds'})
 
     print('len(unique_pdbs_no_seq_dup) = ',len(unique_pdbs_no_seq_dup))
     print('df_tcr_allhead.pdbid.nunique()', df_tcr_allhead.pdbid.nunique())
@@ -134,23 +162,20 @@ def main(args):
     table_by_pdb = []
     for hhh in range(5):
         print()
-        print()
         print('head',hhh, '*'*30)
         df_by_prop = []
         for prop in prop_list:
+            if prop in ['pepres__is_in_edge', 'pepres__distance_value', 'pepres__num_bonds']: continue 
             vals = []
             for ppp in df_tcr_allhead.pdbid.unique():
                 temp = df_tcr_allhead.query('pdbid==@ppp').copy()
-                temp['tcr'] = temp['residue'].values
                 if hhh==4:
                     temp['is_large_atten'] = temp[f'head_all'].values
                 else:
                     temp['is_large_atten'] = temp[f'head_{hhh}'].values
                 vals.append(return_property_by_islarge(temp, prop))
             vals = np.array(vals)
-
-            df_minimum = pd.DataFrame(vals, index=df_tcr_allhead.pdbid.unique(), columns=[f'Large {prop}', f'Small {prop}'])
-            
+            df_item = pd.DataFrame(vals, index=df_tcr_allhead.pdbid.unique(), columns=[f'Large {prop}', f'Small {prop}'])
             ttest_result = stats.ttest_rel(vals[:,0], vals[:,1], nan_policy='omit')
             means = np.nanmean(vals, axis=0).tolist()
             stds = np.nanstd(vals, axis=0)
@@ -173,18 +198,65 @@ def main(args):
                         ttest_result[1],
                         hhh if hhh!=4 else 'all']
                         )
-            df_by_prop.append(df_minimum)
+            df_by_prop.append(df_item)
         table_by_pdb.append(pd.concat(df_by_prop,axis=1).assign(head=hhh if hhh!=4 else 'all'))
 
-    df = pd.DataFrame(table, 
-                columns=['property', 'Large Atten Mean. Mean(STD)', 'Small Atten. Mean(STD)', 'P Value', 'Head'])
+    pep__table = []
+    pep__table_by_pdb = []
+    for hhh in range(5):
+        print()
+        print('head',hhh, '*'*30)
+        df_by_prop = []
+        for prop in prop_list:
+            if prop in ['digit4_is_in_edge', 'distance_value', 'num_bonds']: continue 
+            vals = []
+            for ppp in df_pep_allhead.pdbid.unique():
+                temp = df_pep_allhead.query('pdbid==@ppp').copy()
+                if hhh==4:temp['is_large_atten'] = temp[f'head_all'].values
+                else:temp['is_large_atten'] = temp[f'head_{hhh}'].values
+                vals.append(return_property_by_islarge(temp, prop))
+            vals = np.array(vals)
+            df_item = pd.DataFrame(vals, index=df_pep_allhead.pdbid.unique(), columns=[f'Large {prop}', f'Small {prop}'])
+            ttest_result = stats.ttest_rel(vals[:,0], vals[:,1], nan_policy='omit')
+            means = np.nanmean(vals, axis=0).tolist()
+            stds = np.nanstd(vals, axis=0)
+            if np.isnan(means[0]):
+                print(prop, )
+                print(df_item)
+                assert False
+            
+            print('  prop', prop)
+            print(f"\t mean+std of large = {means[0]}+-{stds[0]}", )
+            print(f"\t mean+std of small = {means[1]}+-{stds[1]}", )
+            print(ttest_result)
+            if ttest_result[1]<0.05:
+                print(f'\t *** Significant! head={hhh}, p={ttest_result[1]}, prop={prop}')
+            else:
+                print('\t - not significant...')
+                    
+            pep__table.append(['Proportion ' + prop if 'is_' in prop else prop, 
+                        f"{means[0]:.4f}+-{stds[0]:.4f}", 
+                        f"{means[1]:.4f}+-{stds[1]:.4f}", 
+                        ttest_result[1],
+                        hhh if hhh!=4 else 'all']
+                        )
+            df_by_prop.append(df_item)
+        pep__table_by_pdb.append(pd.concat(df_by_prop,axis=1).assign(head=hhh if hhh!=4 else 'all'))
+
+    dftcrside = pd.DataFrame(table, 
+                columns=['property', 'Large Atten Mean. Mean(STD)', 'Small Atten. Mean(STD)', 'P Value', 'Head']).assign(side='tcr')
+    dfpepside = pd.DataFrame(pep__table, 
+                    columns=['property', 'Large Atten Mean. Mean(STD)', 'Small Atten. Mean(STD)', 'P Value', 'Head']).assign(side='peptide')
+    df = pd.concat([dftcrside, dfpepside])
+
     df.loc[df['P Value'] < 0.10, ' '] = '*'
     df.loc[df['P Value'] < 0.05, ' '] = '***'
     df.loc[df['P Value'] >= 0.10, ' '] = ''
     df[' '].fillna(' ')
     df.to_csv(args.output_statspath, index=False)
     table_by_pdb = pd.concat(table_by_pdb, axis=0)
-    table_by_pdb.reset_index().to_csv(args.output_statspath.replace('.csv', '__by_pdbid.csv'), index=False)
+    pep__table_by_pdb = pd.concat(pep__table_by_pdb, axis=0)
+    pd.concat([table_by_pdb.assign(side='tcr'), pep__table_by_pdb.assign(side='peptide')]).reset_index().to_csv(args.output_statspath.replace('.csv', '__by_pdbid.csv'), index=False)
     print(args.output_statspath, 'saved')
     print(args.output_statspath.replace('.csv', '__by_pdbid.csv'), 'saved')
 
@@ -207,17 +279,11 @@ if __name__ == "__main__":
 
     python stats_test.py --seqfile ../data/pdb_complex_sequencesV2.parquet \
         --checkpointsjson ../hpo_params/checkpoints.json \
-            --input_filepath ../data/pdb_complex_sequencesV2_entire_cross_newemb__explained.parquet \
-                --pdblist ../data/pdblist.csv \
-                    --residue_distances ./../data/20230828_015709__residue_distances.parquet \
-                        --datetimehash 20230828_015709
+            --input_filepath ../data/pdb_complex_sequencesV2_entire_cross_newemb__explained.parquet --datetimehash 20230828_015709
 
     python stats_test.py --seqfile ../data/pdb_complex_sequencesV2.parquet \
         --checkpointsjson ../hpo_params/checkpoints.json \
-            --input_filepath ../data/pdb_complex_sequencesV2_entire_self_newemb__explained.parquet \
-                --pdblist ../data/pdblist.csv \
-                    --residue_distances ./../data/20230828_015709__residue_distances.parquet \
-                        --datetimehash 20230828_015709
+            --input_filepath ../data/pdb_complex_sequencesV2_entire_self_newemb__explained.parquet --datetimehash 20230828_015709
 
     """
 
@@ -230,10 +296,6 @@ if __name__ == "__main__":
         "--input_filepath", type=str, 
         default="../data/pdb_complex_sequences_entire_crossatten__explained.parquet"
     )
-    parser.add_argument("--pdblist", type=str, default='../data/pdblist.csv')  # or ../data/pdblist.csv
-    parser.add_argument("--residue_distances", type=str, 
-                       # default=f"./../data/{datetimehash}__residue_distances.parquet"
-                       )
     parser.add_argument("--datetimehash", type=str, default='20230828_015709')
 
     args = parser.parse_args()
