@@ -303,6 +303,21 @@ def main(ckptpath, dt, output_filepath, args):
     df = pd.concat(dlist).reset_index(drop=False).rename(columns={"index":'position'})
     
     dfinput = dfinput.drop_duplicates(subset=["pdbid", "tcra", "tcrb", "peptide"])
+
+    # drop the data that have None
+    dfinput = dfinput.dropna(subset=["tcra", "tcrb", "peptide"])
+
+    # drop the data that have empty string
+    dfinput = dfinput[dfinput["tcra"].apply(len) > 0]
+    dfinput = dfinput[dfinput["tcrb"].apply(len) > 0]
+    dfinput = dfinput[dfinput["peptide"].apply(len) > 0]
+
+    # check if the data has none
+    for col in ["tcra", "tcrb", "peptide"]:
+        assert dfinput[col].isnull().sum() == 0, "some of the data has None"
+        assert (dfinput[col].apply(len)==0).sum() == 0, "some of the data has empty string"
+
+
     logits = use_model_on_df(dfinput.assign(sign=0), model, batch_size=batch_size, device=device)
     softmaxed = np.exp(logits) / np.exp(logits).sum(axis=1).reshape(-1, 1)
     dfinput["proba"] = softmaxed[:, 1]
