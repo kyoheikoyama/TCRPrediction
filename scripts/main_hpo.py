@@ -72,7 +72,7 @@ def main(args, params):
     optim = torch.optim.Adam(model.parameters(), lr=params['lr'])
 
     # Loss
-    loss_fn = torch.nn.CrossEntropyLoss(weight=torch.tensor([1.0, 15.0], device=device))
+    loss_fn = torch.nn.CrossEntropyLoss(weight=torch.tensor([1.0, 6.0], device=device))
 
     # for debug
     # for xx, yy in test_loader: break
