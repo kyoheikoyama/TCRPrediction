@@ -104,7 +104,7 @@ def main(ckptpath, dt, output_filepath, args):
     optim = torch.optim.Adam(model.parameters(), lr=lr)
 
     # Loss
-    loss_fn = torch.nn.CrossEntropyLoss(weight=torch.tensor([1.0, 15.0], device=device))
+    loss_fn = torch.nn.CrossEntropyLoss(weight=torch.tensor([1.0, 6.0], device=device))
 
     trainer = create_supervised_trainer(
         model=model,
@@ -188,6 +188,11 @@ if __name__ == "__main__":
 
     dt = checkpointsjson[args.model_key]
     torch_ckptdir = f"/media/kyohei/forAI/tcrpred/checkpoint/{dt}/"
-    ckptpath = torch_ckptdir + checkpointsjson[args.model_key + "_ckpt"]
+    if os.path.exists(torch_ckptdir):
+        torch_ckptdir = f"/media/kyohei/forAI/tcrpred/checkpoint/{dt}/"
+        ckptpath = torch_ckptdir + checkpointsjson[args.model_key + "_ckpt"]
+    else:
+        torch_ckptdir = f"../checkpoint/{dt}/"
+        ckptpath = torch_ckptdir + checkpointsjson[args.model_key + "_ckpt"]
 
     main(ckptpath, dt, output_filepath, args)
