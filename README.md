@@ -25,6 +25,21 @@ The main folder for the scripts is `./scripts/`
 `cd scripts && python main_from_csv.py --traincsv ../data/sample_train.csv  --testcsv ../data/sample_test.csv `
 
 
+## Prediction
+
+after making sure you have data to predict (`../data/recent_data_test.parquet`) and checkpoint 
+
+- prediction.py
+  - `python predict.py --model_key entire_crossatten --checkpointsjson ../hpo_params/checkpoints.json --input_filepath ../data/recent_data_test.parquet`
+
+  - python predict.py --model_key entire_self_newemb --checkpointsjson ../hpo_params/checkpoints.json --input_filepath ../data/recent_data_test.parquet
+  - python predict.py --model_key entire_cross_newemb --checkpointsjson ../hpo_params/checkpoints.json --input_filepath ../data/recent_data_test.parquet  # 
+  - python predict.py --model_key entire_cross_newemb --checkpointsjson ../hpo_params/checkpoints.json --input_filepath ../data/covid19_9mer.parquet
+  - python predict.py --model_key benchmark_cross_newemb_vdjdbno10x --checkpointsjson ../hpo_params/checkpoints.json --input_filepath ../data/recent_data_test.parquet
+  - python predict.py --model_key benchmark_cross_mcpas --checkpointsjson ../hpo_params/checkpoints.json --input_filepath ../data/recent_data_test.parquet
+
+  - python predict.py --model_key entire_cross_stoppingByAP --checkpointsjson ../hpo_params/checkpoints.json --input_filepath ../data/recent_data_test.parquet 
+
 
 ## 20230626 for sequence model
 
@@ -94,14 +109,6 @@ python main.py --params best.json --dataset entire --modeltype self_on_all
   - Test Results - Epoch: 32. Avg accuracy: 0.7141 Avg xent: 2.5865 Avg roc_auc: 0.5357 Avg pr_auc_on_one: 0.1889 Avg pr_auc_on_zero: 0.8698 
 
 
-
-## Prediction
-- prediction.py
-  - `python predict.py --model_key entire_crossatten --checkpointsjson ../hpo_params/checkpoints.json --input_filepath ../data/recent_data_test.parquet`
-
-  - python predict.py --model_key entire_self_newemb --checkpointsjson ../hpo_params/checkpoints.json --input_filepath ../data/recent_data_test.parquet
-  - python predict.py --model_key entire_cross_newemb --checkpointsjson ../hpo_params/checkpoints.json --input_filepath ../data/recent_data_test.parquet  # 
-  - python predict.py --model_key entire_cross_stoppingByAP --checkpointsjson ../hpo_params/checkpoints.json --input_filepath ../data/recent_data_test.parquet 
 
 ## Explain
   - python explain.py --model_key entire_cross_newemb --checkpointsjson ../hpo_params/checkpoints.json --input_filepath ../data/pdb_complex_sequencesV2.parquet

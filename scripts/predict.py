@@ -195,4 +195,5 @@ if __name__ == "__main__":
         torch_ckptdir = f"../checkpoint/{dt}/"
         ckptpath = torch_ckptdir + checkpointsjson[args.model_key + "_ckpt"]
 
+    print("check point path =", ckptpath)
     main(ckptpath, dt, output_filepath, args)
