@@ -12,6 +12,7 @@ import json
 import torch
 from tqdm import tqdm
 sys.path.append("../analysis/")
+from scipy.special import softmax
 # import plotly.express as px
 
 sys.path.append("../")
@@ -33,9 +34,19 @@ os.environ["PYTHONHASHSEED"] = str(SEED)
 torch.manual_seed(SEED)
 torch.cuda.manual_seed(SEED)
 
+def load_data(filepath):
+    file_ext = pathlib.Path(filepath).suffix
+    if file_ext == '.parquet':
+        return pd.read_parquet(filepath)
+    elif file_ext == '.csv':
+        return pd.read_csv(filepath)
+    else:
+        raise ValueError("Unsupported file format: only .parquet and .csv files are supported.")
+
 
 def main(ckptpath, dt, output_filepath, args):
-    dfinput = pd.read_parquet(args.input_filepath).reset_index(drop=True)
+    dfinput = load_data(args.input_filepath).reset_index(drop=True)
+
     if args.input_filepath == "../data/panpep_zeroshot.parquet":
         dfinput["sign"] = dfinput["Label"]
         dfinput["peptide"] = dfinput["Peptide"]
@@ -123,13 +134,18 @@ def main(ckptpath, dt, output_filepath, args):
 
     ret = use_model_on_df(dfinput, model, batch_size, device=device)
     retdf = pd.DataFrame(ret, columns=["pred0", "pred1"])
+    retdf = pd.DataFrame(np.vstack(retdf.apply(softmax, axis=1).values), columns=["pred0", "pred1"]) #, columns=["pred0", "pred1"]) #.apply(lambda x: x[1])
     dfinput = pd.concat([dfinput, retdf], axis=1)
-    dfinput.to_parquet(output_filepath)
+    output_ext = pathlib.Path(output_filepath).suffix
+    if output_ext == '.parquet':
+        dfinput.to_parquet(output_filepath)
+    elif output_ext == '.csv':
+        dfinput.to_csv(output_filepath, index=False)
+    print("Output file has been saved at", output_filepath)
 
 
-    from scipy.special import softmax
     from sklearn.metrics import roc_auc_score, average_precision_score
-    p1 = retdf.apply(softmax, axis=1).apply(lambda x: x[1])
+    p1 = retdf.pred1.values
 
     print("AUC: ", roc_auc_score(dfinput["sign"], p1))
     print("AP: ", average_precision_score(dfinput["sign"], p1))
@@ -181,7 +197,13 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-    output_filepath = args.input_filepath.replace(".parquet","") + f"_{args.model_key}.parquet"
+    
+    output_ext = pathlib.Path(args.input_filepath).suffix
+    if output_ext == '.parquet':
+        output_filepath = args.input_filepath.replace(".parquet","") + f"_{args.model_key}.parquet"
+    elif output_ext == '.csv':
+        output_filepath = args.input_filepath.replace(".csv","") + f"_{args.model_key}.csv"
+    
 
     with open(args.checkpointsjson, "r") as fp:
         checkpointsjson = json.load(fp)
@@ -196,4 +218,5 @@ if __name__ == "__main__":
         ckptpath = torch_ckptdir + checkpointsjson[args.model_key + "_ckpt"]
 
     print("check point path =", ckptpath)
+    print("Output file will be saved at", output_filepath)
     main(ckptpath, dt, output_filepath, args)

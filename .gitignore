@@ -11,8 +11,11 @@ log/
 **/log/**	
 **/data/**	
 *tsv
+*txt
 *csv
 *zip
+*pickle
+*parquet
 **/logs/**kicker**
 **Untitled**
 **.sh.o**

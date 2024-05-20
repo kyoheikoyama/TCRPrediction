@@ -1,11 +1,77 @@
 # tcrpred
-tcrpred for the paper (https://www.biorxiv.org/content/10.1101/2023.02.16.528799v3)
+TCR-pMHC (CDR3ab-pMHC) prediction programme for the paper (https://www.biorxiv.org/content/10.1101/2023.02.16.528799v3)
 
-## Setup env
+# How to setup or install environment
 
-1. make init.conda
+## Base
+1. conda create -n tcrpred python=3.8.3 -y
 2. conda activate tcrpred
-3. make env.conda
+3. (Then, you are in the conda env. Now run the following command in the conda env. Change torch versions according to your own env)
+
+## CPU version
+```
+conda install -y pytorch==1.7.0 cpuonly -c pytorch
+python -m pip install pip==20.2 && pip install -r ./requirements.txt --use-feature=2020-resolver
+conda install ignite -c pytorch
+conda install mkl==2024.0
+```
+
+## GPU version
+```
+conda install -y pytorch==1.7.0 cudatoolkit=10.2 -c pytorch
+python -m pip install pip==20.2 && pip install -r ./requirements.txt --use-feature=2020-resolver
+conda install ignite -c pytorch
+```
+
+## Error handling
+If you face the error below, run `conda install mkl==2024.0`.
+
+```
+>>> import torch
+Traceback (most recent call last):
+ File "<stdin>", line 1, in <module>
+ File "/home/XXXXX/miniconda3/envs/tcrpred/lib/python3.8/site-packages/torch/__init__.py", line 190, in <module>
+  from torch._C import *
+ImportError: /home/XXXXX/miniconda3/envs/tcrpred/lib/python3.8/site-packages/torch/lib/libtorch_cpu.so: undefined symbol: iJIT_IsProfilingActive
+```
+
+
+# How to predict (Use the best model)
+
+## Example command
+If you want to run the prediction program, in the scripts directory, run `predict.py` . 
+The command is as follows:
+`python predict.py --model_key entire_cross_newemb --checkpointsjson ../hpo_params/checkpoints.json --input_filepath ../data/recent_data_test.parquet`
+
+This will use ./data/recent_data_test.parquet for the prediction.
+
+## About the schema for new data
+The data content has the following 4 Columns, the model needs peptide tcra tcrb for the prediction, and sign for the score calculation.
+
+`peptide tcra tcrb sign`
+
+If you want to enter new data and make a prediction, just enter the above four pairs and the program should work.
+If the sign is unknown, just set all cases to 0, 1, or np.nan and it should work without error.
+Also, please note the maximum lengths of the CDR and Peptide array are fixed as follows:
+`MAXLENGTH_A, MAXLENGTH_B, max_len_epitope = 28, 28, 25`
+
+## How to test the code for adhoc inputs
+- Create your own datasets.csv: for instance, ../data/sample_adhoc.csv
+`python predict.py --model_key entire_cross_newemb --checkpointsjson ../hpo_params/checkpoints.json --input_filepath ../data/sample_adhoc.csv`
+
+- The output file will be saved at `../data/sample_adhoc_entire_cross_newemb.csv`
+  - The output has additional columns of ['pred0','pred1'], which are the softmax result of the network output. 
+  - We can look at the pred1 to judge the prediction results for positive or negative. 
+  - If the value of pred1 is more than 0.5, the prediction result is positive for the input.
+
+
+
+## How to train the code for adhoc inputs
+- Create your own datasets.csv: for instance, ../data/sample_train.csv
+- then pass them in the `main_from_csv.py`
+
+`cd scripts && python main_from_csv.py --traincsv ../data/sample_train.csv  --testcsv ../data/sample_test.csv `
+
 
 ## Commands
 
@@ -16,13 +82,6 @@ The main folder for the scripts is `./scripts/`
 - explain.py: This script is used for explaining, adding, and acquiring Attention in a trained model for an arbitrary array. The output is the Attention, not just the acquisition of the score of the prediction.
 - precompute_dict.py, calc_distances_pdb.py, run_ligplot.py, create_pdb_info.py: These scripts use PDB files as input to determine CDR regions, calculate remaining period distances, and obtain hydrogen bond information using Ligprot. The `create_pdb_info.py` script provides information for each amino acid residue, such as peptide-contacts or other information.
 
-
-
-## How to use for adhoc inputs
-- Create your own datasets.csv: for instance, ../data/sample_train.csv
-- then pass them in the `main_from_csv.py`
-
-`cd scripts && python main_from_csv.py --traincsv ../data/sample_train.csv  --testcsv ../data/sample_test.csv `
 
 
 ## Prediction
@@ -40,73 +99,6 @@ after making sure you have data to predict (`../data/recent_data_test.parquet`) 
 
   - python predict.py --model_key entire_cross_stoppingByAP --checkpointsjson ../hpo_params/checkpoints.json --input_filepath ../data/recent_data_test.parquet 
 
-
-## 20230626 for sequence model
-
-#### "../data/20230627_110913_k-1_datasettest.parquet"
-python main.py --params best.json --dataset vdjdbno10x --modeltype cross 
-
-#### "../data/20230627_111332_k-1_datasettest.parquet"
-python main.py --params best.json --dataset mcpas --modeltype cross
-
-
-##  20230703 attention on all
-
-#### /media/kyohei/forAI/tcrpred/hhyylog/20230704_221459_k-1_datasettest.parquet
-python main.py --params best.json --dataset allwithtest --modeltype cross 
-
-#### /media/kyohei/forAI/tcrpred/hhyylog/20230704_232054_k-1_datasettest.parquet
-python main.py --params best.json --dataset allwithtest --modeltype self_on_all
-
-
-#### /media/kyohei/forAI/tcrpred/hhyylog/20230819_081045_k-1_datasettest.parquet
-python main.py --params best.json --dataset all --modeltype self_on_all
-
-
-#### /media/kyohei/forAI/tcrpred/hhyylog/20230819_070510_k-1_datasettest.parquet
-python main.py --params best.json --dataset all --modeltype cross
-
-### /media/kyohei/forAI/tcrpred/hhyylog/20230823_213832_k-1_datasettest.parquet
-python main.py --params best.json --dataset all --modeltype cross 
-
-### /media/kyohei/forAI/tcrpred/hhyylog/20230823_202306_k-1_datasettest.parquet
-python main.py --params best.json --dataset all --modeltype self_on_all
-
-## experiment for neurips
-
-#### /media/kyohei/forAI/tcrpred/hhyylog/20230825_210148_k-1_datasettest.parquet
-python main.py --params best.json --dataset vdjdbno10x --modeltype self_on_all
-  - Test Results - Epoch: 26. Avg accuracy: 0.8676 Avg xent: 0.3589 Avg roc_auc: 0.9499 Avg pr_auc_on_one: 0.7539 Avg pr_auc_on_zero: 0.9908
-
-#### /media/kyohei/forAI/tcrpred/hhyylog/20230825_205356_k-1_datasettest.parquet
-python main.py --params best.json --dataset mcpas --modeltype self_on_all
-  - Test Results - Epoch: 26. Avg accuracy: 0.8638 Avg xent: 0.7556 Avg roc_auc: 0.9234 Avg pr_auc_on_one: 0.6299 Avg pr_auc_on_zero: 0.9857 
-
-## experiment for neurips
-#### /media/kyohei/forAI/tcrpred/hhyylog/20230826_031920_k-1_datasettest.parquet
-python main.py --params best.json --dataset vdjdbno10x --modeltype cross
-  - Test Results - Epoch: 35. Avg accuracy: 0.9057 Avg xent: 0.6189 Avg roc_auc: 0.9459 Avg pr_auc_on_one: 0.7760 Avg pr_auc_on_zero: 0.9890  
-
-#### /media/kyohei/forAI/tcrpred/hhyylog/20230826_032916_k-1_datasettest.parquet
-python main.py --params best.json --dataset vdjdbno10x --modeltype self_on_all
-  - Test Results - Epoch: 27. Avg accuracy: 0.9077 Avg xent: 0.5786 Avg roc_auc: 0.9513 Avg pr_auc_on_one: 0.7690 Avg pr_auc_on_zero: 0.9906 
-
-## /media/kyohei/forAI/tcrpred/hhyylog/20230826_033421_k-1_datasettest.parquet
-python main.py --params best.json --dataset mcpas --modeltype cross
-  - Test Results - Epoch: 23. Avg accuracy: 0.8738 Avg xent: 0.6872 Avg roc_auc: 0.9187 Avg pr_auc_on_one: 0.6349 Avg pr_auc_on_zero: 0.9845 
-
-## /media/kyohei/forAI/tcrpred/hhyylog/20230826_033957_k-1_datasettest.parquet
-python main.py --params best.json --dataset mcpas --modeltype self_on_all
-  - Test Results - Epoch: 31. Avg accuracy: 0.8824 Avg xent: 1.0388 Avg roc_auc: 0.9206 Avg pr_auc_on_one: 0.6123 Avg pr_auc_on_zero: 0.9852 
-
-## /media/kyohei/forAI/tcrpred/hhyylog/20230826_035401_k-1_datasettest.parquet
-python main.py --params best.json --dataset entire --modeltype cross
-  - Test Results - Epoch: 47. Avg accuracy: 0.7253 Avg xent: 2.7443 Avg roc_auc: 0.5519 Avg pr_auc_on_one: 0.2052 Avg pr_auc_on_zero: 0.8788
-
-
-## /media/kyohei/forAI/tcrpred/hhyylog/20230826_044148_k-1_datasettest.parquet
-python main.py --params best.json --dataset entire --modeltype self_on_all
-  - Test Results - Epoch: 32. Avg accuracy: 0.7141 Avg xent: 2.5865 Avg roc_auc: 0.5357 Avg pr_auc_on_one: 0.1889 Avg pr_auc_on_zero: 0.8698 
 
 
 
